@@ -21,7 +21,7 @@ export const calculatePayroll = (
   advanceRecords: AdvanceRecord[]
 ): PayrollReceipt => {
   const daysInMonth = getDaysInMonth(new Date(year, month - 1));
-  const dailyRate = employee.baseSalary / daysInMonth;
+  const dailyRate = employee.baseSalary; // Base Salary is now Daily Rate as per user request
 
   // Count attendance
   let absentDays = 0;

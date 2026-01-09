@@ -26,6 +26,7 @@ import { formatDate } from '@/shared/utils/date.utils';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths } from 'date-fns';
+import { th } from 'date-fns/locale';
 
 const AttendanceCalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -81,6 +82,20 @@ const AttendanceCalendarPage = () => {
     setDialogOpen(false);
   };
 
+  const handleDeleteAttendance = (employeeId: string, date: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')) {
+      deleteAttendance(employeeId, date);
+    }
+  };
+
+  const handleDeleteAdvance = (employeeId: string, date: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (window.confirm('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')) {
+      deleteAdvance(employeeId, date);
+    }
+  };
+
   const getEventsForDay = (date: Date) => {
     const dateStr = formatDate(date);
     const attendance = attendanceRecords.filter(r => r.date === dateStr);
@@ -94,14 +109,14 @@ const AttendanceCalendarPage = () => {
       <Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1">
-            Attendance Calendar
+            ปฏิทินการลงเวลา
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton onClick={handlePrevMonth}>
               <ChevronLeftIcon />
             </IconButton>
             <Typography variant="h6">
-              {format(currentDate, 'MMMM yyyy')}
+              {format(currentDate, 'MMMM yyyy', { locale: th })}
             </Typography>
             <IconButton onClick={handleNextMonth}>
               <ChevronRightIcon />
@@ -113,7 +128,7 @@ const AttendanceCalendarPage = () => {
           <CardContent>
             <Grid container spacing={1}>
               {/* Day headers */}
-              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((day) => (
                 <Grid item xs={12 / 7} key={day}>
                   <Typography variant="subtitle2" align="center" fontWeight="bold">
                     {day}
@@ -155,8 +170,9 @@ const AttendanceCalendarPage = () => {
                           return (
                             <Chip
                               key={`att-${record.employeeId}`}
-                              label={`${employee.name.substring(0, 8)} - ${record.type}`}
+                              label={`${employee.name.substring(0, 8)} - ${record.type === 'absent' ? 'ขาด' : 'ครึ่งวัน'}`}
                               size="small"
+                              onDelete={(e) => handleDeleteAttendance(record.employeeId, record.date, e)}
                               sx={{
                                 backgroundColor: employee.color,
                                 color: '#fff',
@@ -164,6 +180,14 @@ const AttendanceCalendarPage = () => {
                                 height: 20,
                                 mt: 0.5,
                                 width: '100%',
+                                '& .MuiChip-deleteIcon': {
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  height: 14,
+                                  width: 14,
+                                  '&:hover': {
+                                    color: '#fff',
+                                  }
+                                }
                               }}
                             />
                           );
@@ -178,6 +202,7 @@ const AttendanceCalendarPage = () => {
                               key={`adv-${record.employeeId}-${idx}`}
                               label={`${employee.name.substring(0, 8)} - ฿${record.amount}`}
                               size="small"
+                              onDelete={(e) => handleDeleteAdvance(record.employeeId, record.date, e)}
                               sx={{
                                 backgroundColor: employee.color,
                                 color: '#fff',
@@ -186,6 +211,14 @@ const AttendanceCalendarPage = () => {
                                 mt: 0.5,
                                 width: '100%',
                                 opacity: 0.8,
+                                '& .MuiChip-deleteIcon': {
+                                  color: 'rgba(255, 255, 255, 0.7)',
+                                  height: 14,
+                                  width: 14,
+                                  '&:hover': {
+                                    color: '#fff',
+                                  }
+                                }
                               }}
                             />
                           );
@@ -202,27 +235,27 @@ const AttendanceCalendarPage = () => {
         {/* Event Creation Dialog */}
         <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
           <DialogTitle>
-            Create Event - {selectedDate && format(selectedDate, 'MMMM d, yyyy')}
+            สร้างรายการ - {selectedDate && format(selectedDate, 'd MMMM yyyy', { locale: th })}
           </DialogTitle>
           <DialogContent>
             <FormControl fullWidth margin="normal">
-              <InputLabel>Event Type</InputLabel>
+              <InputLabel>ประเภทรายการ</InputLabel>
               <Select
                 value={eventType}
                 onChange={(e) => setEventType(e.target.value as 'attendance' | 'advance')}
-                label="Event Type"
+                label="ประเภทรายการ"
               >
-                <MenuItem value="attendance">Attendance</MenuItem>
-                <MenuItem value="advance">Advance Payment</MenuItem>
+                <MenuItem value="attendance">การลงเวลา (ขาด/ลา)</MenuItem>
+                <MenuItem value="advance">เบิกล่วงหน้า</MenuItem>
               </Select>
             </FormControl>
 
             <FormControl fullWidth margin="normal">
-              <InputLabel>Employee</InputLabel>
+              <InputLabel>พนักงาน</InputLabel>
               <Select
                 value={selectedEmployeeId}
                 onChange={(e) => setSelectedEmployeeId(e.target.value)}
-                label="Employee"
+                label="พนักงาน"
               >
                 {employees.map((emp) => (
                   <MenuItem key={emp.id} value={emp.id}>
@@ -234,20 +267,20 @@ const AttendanceCalendarPage = () => {
 
             {eventType === 'attendance' ? (
               <FormControl fullWidth margin="normal">
-                <InputLabel>Attendance Type</InputLabel>
+                <InputLabel>ประเภทการขาดงาน</InputLabel>
                 <Select
                   value={attendanceType}
                   onChange={(e) => setAttendanceType(e.target.value as 'absent' | 'half')}
-                  label="Attendance Type"
+                  label="ประเภทการขาดงาน"
                 >
-                  <MenuItem value="absent">Absent</MenuItem>
-                  <MenuItem value="half">Half Day</MenuItem>
+                  <MenuItem value="absent">ขาดงาน</MenuItem>
+                  <MenuItem value="half">ครึ่งวัน</MenuItem>
                 </Select>
               </FormControl>
             ) : (
               <TextField
                 fullWidth
-                label="Amount"
+                label="จำนวนเงิน"
                 type="number"
                 value={advanceAmount}
                 onChange={(e) => setAdvanceAmount(e.target.value)}
@@ -256,13 +289,13 @@ const AttendanceCalendarPage = () => {
             )}
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => setDialogOpen(false)}>ยกเลิก</Button>
             <Button
               onClick={handleCreateEvent}
               variant="contained"
               disabled={!selectedEmployeeId || (eventType === 'advance' && !advanceAmount)}
             >
-              Create
+              บันทึก
             </Button>
           </DialogActions>
         </Dialog>

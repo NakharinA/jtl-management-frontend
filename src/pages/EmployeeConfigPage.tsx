@@ -81,7 +81,7 @@ const EmployeeConfigPage = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this employee?')) {
+    if (window.confirm('คุณแน่ใจหรือไม่ที่จะลบพนักงานคนนี้?')) {
       deleteEmployee(id);
     }
   };
@@ -91,14 +91,14 @@ const EmployeeConfigPage = () => {
       <Box>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1">
-            Employee Configuration
+            จัดการพนักงาน
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
           >
-            Add Employee
+            เพิ่มพนักงาน
           </Button>
         </Box>
 
@@ -108,11 +108,11 @@ const EmployeeConfigPage = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell align="right">Base Salary</TableCell>
-                    <TableCell align="right">Payment Day</TableCell>
-                    <TableCell>Color</TableCell>
-                    <TableCell align="right">Actions</TableCell>
+                    <TableCell>ชื่อ-นามสกุล</TableCell>
+                    <TableCell align="right">ค่าแรงรายวัน</TableCell>
+                    <TableCell align="right">วันตัดรอบเงินเดือน</TableCell>
+                    <TableCell>สี</TableCell>
+                    <TableCell align="right">จัดการ</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -120,7 +120,7 @@ const EmployeeConfigPage = () => {
                     <TableRow>
                       <TableCell colSpan={5} align="center">
                         <Typography color="text.secondary">
-                          No employees found. Click "Add Employee" to create one.
+                          ไม่พบข้อมูลพนักงาน คลิก "เพิ่มพนักงาน" เพื่อสร้างใหม่
                         </Typography>
                       </TableCell>
                     </TableRow>
@@ -168,12 +168,12 @@ const EmployeeConfigPage = () => {
 
         <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
           <DialogTitle>
-            {editingEmployee ? 'Edit Employee' : 'Add Employee'}
+            {editingEmployee ? 'แก้ไขข้อมูลพนักงาน' : 'เพิ่มพนักงาน'}
           </DialogTitle>
           <DialogContent>
             <TextField
               fullWidth
-              label="Name"
+              label="ชื่อ-นามสกุล"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               margin="normal"
@@ -181,7 +181,7 @@ const EmployeeConfigPage = () => {
             />
             <TextField
               fullWidth
-              label="Base Salary"
+              label="ค่าแรงรายวัน"
               type="number"
               value={formData.baseSalary}
               onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
@@ -189,7 +189,7 @@ const EmployeeConfigPage = () => {
             />
             <TextField
               fullWidth
-              label="Payment Day (1-31)"
+              label="วันตัดรอบเงินเดือน (1-31)"
               type="number"
               value={formData.paymentDay}
               onChange={(e) => setFormData({ ...formData, paymentDay: e.target.value })}
@@ -198,7 +198,7 @@ const EmployeeConfigPage = () => {
             />
             <Box sx={{ mt: 2 }}>
               <Typography variant="body2" gutterBottom>
-                Color
+                สีประจำตัว
               </Typography>
               <input
                 type="color"
@@ -209,13 +209,13 @@ const EmployeeConfigPage = () => {
             </Box>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleCloseDialog}>Cancel</Button>
+            <Button onClick={handleCloseDialog}>ยกเลิก</Button>
             <Button
               onClick={handleSubmit}
               variant="contained"
               disabled={!formData.name || !formData.baseSalary || !formData.paymentDay}
             >
-              {editingEmployee ? 'Update' : 'Create'}
+              {editingEmployee ? 'บันทึก' : 'สร้าง'}
             </Button>
           </DialogActions>
         </Dialog>

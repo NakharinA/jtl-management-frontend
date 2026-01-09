@@ -49,7 +49,7 @@ const PayrollPage = () => {
     <Layout>
       <Box>
         <Typography variant="h4" component="h1" gutterBottom>
-          Payroll Generation
+          คำนวณเงินเดือน
         </Typography>
 
         <Card sx={{ mb: 3 }}>
@@ -61,7 +61,7 @@ const PayrollPage = () => {
                   <Select
                     value={selectedYear.toString()}
                     onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                    label="Year"
+                    label="ปี"
                   >
                     {years.map((year) => (
                       <MenuItem key={year} value={year}>
@@ -74,15 +74,15 @@ const PayrollPage = () => {
 
               <Grid item xs={12} md={3}>
                 <FormControl fullWidth>
-                  <InputLabel>Month</InputLabel>
+                  <InputLabel>เดือน</InputLabel>
                   <Select
                     value={selectedMonth.toString()}
                     onChange={(e) => setSelectedMonth(parseInt(e.target.value))}
-                    label="Month"
+                    label="เดือน"
                   >
                     {months.map((month) => (
                       <MenuItem key={month} value={month}>
-                        {new Date(2000, month - 1).toLocaleString('default', { month: 'long' })}
+                        {new Date(2000, month - 1).toLocaleString('th-TH', { month: 'long' })}
                       </MenuItem>
                     ))}
                   </Select>
@@ -91,12 +91,12 @@ const PayrollPage = () => {
 
               <Grid item xs={12} md={4}>
                 <FormControl fullWidth>
-                  <InputLabel>Employees</InputLabel>
+                  <InputLabel>พนักงาน</InputLabel>
                   <Select
                     multiple
                     value={selectedEmployeeIds}
                     onChange={handleEmployeeChange}
-                    input={<OutlinedInput label="Employees" />}
+                    input={<OutlinedInput label="พนักงาน" />}
                     renderValue={(selected) => (
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {selected.map((id) => {
@@ -124,7 +124,7 @@ const PayrollPage = () => {
                   onClick={handleGenerate}
                   disabled={selectedEmployeeIds.length === 0}
                 >
-                  Generate
+                  คำนวณ
                 </Button>
               </Grid>
             </Grid>
@@ -135,7 +135,7 @@ const PayrollPage = () => {
         {receipts.length > 0 && (
           <Box>
             <Typography variant="h5" gutterBottom>
-              Payroll Receipts - {formatMonthYear(selectedYear, selectedMonth)}
+               ใบแจ้งรับเงินเดือน - {formatMonthYear(selectedYear, selectedMonth)}
             </Typography>
             <Grid container spacing={3}>
               {receipts.map((receipt) => {
@@ -162,25 +162,18 @@ const PayrollPage = () => {
 
                         <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">
-                            Base Salary
+                            ค่าแรงรายวัน
                           </Typography>
                           <Typography variant="body2">
                             ฿{receipt.summary.baseSalary.toLocaleString()}
                           </Typography>
                         </Box>
 
-                        <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Daily Rate
-                          </Typography>
-                          <Typography variant="body2">
-                            ฿{receipt.summary.dailyRate.toLocaleString()}
-                          </Typography>
-                        </Box>
+
 
                         <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">
-                            Worked Days
+                            จำนวนวันทำงาน
                           </Typography>
                           <Typography variant="body2">
                             {receipt.summary.workedDays}
@@ -189,7 +182,7 @@ const PayrollPage = () => {
 
                         <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">
-                            Half Days
+                            วันหยุด/ครึ่งวัน
                           </Typography>
                           <Typography variant="body2">
                             {receipt.summary.halfDays}
@@ -198,7 +191,7 @@ const PayrollPage = () => {
 
                         <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="text.secondary">
-                            Absent Days
+                            วันขาดงาน
                           </Typography>
                           <Typography variant="body2">
                             {receipt.summary.absentDays}
@@ -209,7 +202,7 @@ const PayrollPage = () => {
 
                         <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body1" fontWeight="bold">
-                            Gross Salary
+                            เงินได้รวม
                           </Typography>
                           <Typography variant="body1" fontWeight="bold">
                             ฿{receipt.summary.grossSalary.toLocaleString()}
@@ -218,7 +211,7 @@ const PayrollPage = () => {
 
                         <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="body2" color="error">
-                            Total Advance
+                            หักเบิกล่วงหน้า
                           </Typography>
                           <Typography variant="body2" color="error">
                             -฿{receipt.summary.totalAdvance.toLocaleString()}
@@ -229,7 +222,7 @@ const PayrollPage = () => {
 
                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography variant="h6" color="primary">
-                            Net Salary
+                            เงินรับสุทธิ
                           </Typography>
                           <Typography variant="h6" color="primary">
                             ฿{receipt.summary.netSalary.toLocaleString()}
@@ -248,7 +241,7 @@ const PayrollPage = () => {
           <Card>
             <CardContent>
               <Typography variant="body1" color="text.secondary" align="center">
-                Select month, year, and employees, then click "Generate" to create payroll receipts.
+                เลือกเดือน ปี และพนักงาน แล้วคลิก "คำนวณ" เพื่อดูรายละเอียดเงินเดือน
               </Typography>
             </CardContent>
           </Card>

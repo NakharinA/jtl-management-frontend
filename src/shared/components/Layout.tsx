@@ -29,9 +29,9 @@ export const Layout = ({ children }: LayoutProps) => {
   };
 
   const navItems = [
-    { path: '/calendar', label: 'Calendar', icon: <CalendarMonthIcon /> },
-    { path: '/employees', label: 'Employees', icon: <PeopleIcon /> },
-    { path: '/payroll', label: 'Payroll', icon: <PaymentIcon /> },
+    { path: '/calendar', label: 'ปฏิทิน', icon: <CalendarMonthIcon /> },
+    { path: '/employees', label: 'พนักงาน', icon: <PeopleIcon /> },
+    { path: '/payroll', label: 'เงินเดือน', icon: <PaymentIcon /> },
   ];
 
   return (
@@ -63,7 +63,7 @@ export const Layout = ({ children }: LayoutProps) => {
             startIcon={<LogoutIcon />}
             onClick={handleLogout}
           >
-            Logout
+            ออกจากระบบ
           </Button>
         </Toolbar>
       </AppBar>
