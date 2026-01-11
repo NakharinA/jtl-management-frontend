@@ -143,7 +143,7 @@ const PayrollPage = () => {
                 if (!employee) return null;
 
                 return (
-                  <Grid item xs={12} md={6} lg={4} key={receipt.employeeId}>
+                  <Grid item xs={12} md={12} lg={12} key={receipt.employeeId}>
                     <Card>
                       <CardContent>
                         <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
