@@ -1,4 +1,5 @@
-const BASE_URL = 'https://api-home.pueyleng.com';
+const BASE_URL = 'http://localhost:3000';
+// const BASE_URL = 'https://api-home.pueyleng.com';
 
 export const apiClient = {
   get: async <T>(url: string, params?: Record<string, string>): Promise<T> => {

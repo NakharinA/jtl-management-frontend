@@ -32,7 +32,7 @@ const EmployeeConfigPage = () => {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    baseSalary: '',
+    dailyRate: '',
     paymentDay: '',
     color: '#1976d2',
   });
@@ -42,15 +42,15 @@ const EmployeeConfigPage = () => {
       setEditingEmployee(employee);
       setFormData({
         name: employee.name,
-        baseSalary: employee.baseSalary.toString(),
-        paymentDay: employee.paymentDay.toString(),
+        dailyRate: employee.dailyRate.toString(),
+        paymentDay: employee.paydayAnchor.toString(),
         color: employee.color,
       });
     } else {
       setEditingEmployee(null);
       setFormData({
         name: '',
-        baseSalary: '',
+        dailyRate: '',
         paymentDay: '',
         color: '#1976d2',
       });
@@ -64,10 +64,10 @@ const EmployeeConfigPage = () => {
   };
 
   const handleSubmit = () => {
-    const data = {
+    const data: Omit<Employee, 'id'> = {
       name: formData.name,
-      baseSalary: parseFloat(formData.baseSalary),
-      paymentDay: parseInt(formData.paymentDay),
+      dailyRate: parseFloat(formData.dailyRate),
+      paydayAnchor: parseInt(formData.paymentDay),
       color: formData.color,
     };
 
@@ -128,8 +128,8 @@ const EmployeeConfigPage = () => {
                     employees.map((employee) => (
                       <TableRow key={employee.id}>
                         <TableCell>{employee.name}</TableCell>
-                        <TableCell align="right">฿{employee.baseSalary.toLocaleString()}</TableCell>
-                        <TableCell align="right">{employee.paymentDay}</TableCell>
+                        <TableCell align="right">{employee.dailyRate} ฿</TableCell>
+                        <TableCell align="right">{employee.paydayAnchor}</TableCell>
                         <TableCell>
                           <Box
                             sx={{
@@ -183,8 +183,8 @@ const EmployeeConfigPage = () => {
               fullWidth
               label="ค่าแรงรายวัน"
               type="number"
-              value={formData.baseSalary}
-              onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
+              value={formData.dailyRate}
+              onChange={(e) => setFormData({ ...formData, dailyRate: e.target.value })}
               margin="normal"
             />
             <TextField
@@ -213,7 +213,7 @@ const EmployeeConfigPage = () => {
             <Button
               onClick={handleSubmit}
               variant="contained"
-              disabled={!formData.name || !formData.baseSalary || !formData.paymentDay}
+              disabled={!formData.name || !formData.dailyRate || !formData.paymentDay}
             >
               {editingEmployee ? 'บันทึก' : 'สร้าง'}
             </Button>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   Box,
   Card,
@@ -17,44 +17,72 @@ import {
   TextField,
   Chip,
   IconButton,
-} from '@mui/material';
-import { Layout } from '@/shared/components/Layout';
-import { useEmployees } from '@/modules/employee/hooks/useEmployees';
-import { useAttendance } from '@/modules/attendance/hooks/useAttendance';
-import { useAdvance } from '@/modules/advance/hooks/useAdvance';
-import { formatDate } from '@/shared/utils/date.utils';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { startOfMonth, endOfMonth, eachDayOfInterval, format, addMonths, subMonths } from 'date-fns';
-import { th } from 'date-fns/locale';
+} from "@mui/material";
+import { Layout } from "@/shared/components/Layout";
+import { useEmployees } from "@/modules/employee/hooks/useEmployees";
+import { useAttendance } from "@/modules/attendance/hooks/useAttendance";
+import { useAdvance } from "@/modules/advance/hooks/useAdvance";
+import { formatDate } from "@/shared/utils/date.utils";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import {
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  format,
+  addMonths,
+  subMonths,
+} from "date-fns";
+import { th } from "date-fns/locale";
 
 const AttendanceCalendarPage = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [eventType, setEventType] = useState<'attendance' | 'advance'>('attendance');
-  const [attendanceType, setAttendanceType] = useState<'absent' | 'half'>('absent');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [eventType, setEventType] = useState<"attendance" | "advance">(
+    "attendance",
+  );
+  const [attendanceType, setAttendanceType] = useState<"absent" | "half">(
+    "absent",
+  );
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [advanceAmount, setAdvanceAmount] = useState("");
 
   const { employees } = useEmployees();
-  const { records: attendanceRecords, createRecord: createAttendance, deleteRecord: deleteAttendance } = useAttendance();
-  const { records: advanceRecords, createRecord: createAdvance, deleteRecord: deleteAdvance } = useAdvance();
+  const {
+    records: attendanceRecords,
+    createRecord: createAttendance,
+    deleteRecord: deleteAttendance,
+    setMonthAndLoad,
+  } = useAttendance();
+  const {
+    records: advanceRecords,
+    createRecord: createAdvance,
+    deleteRecord: deleteAdvance,
+  } = useAdvance();
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
   const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
-  const handlePrevMonth = () => setCurrentDate(subMonths(currentDate, 1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
+  const handlePrevMonth = async () => {
+    const newValue = subMonths(currentDate, 1);
+    setCurrentDate(newValue);
+    await setMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
+  };
+  const handleNextMonth = async () => {
+    const newValue = addMonths(currentDate, 1);
+    setCurrentDate(newValue);
+    await setMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
+  };
 
   const handleDayClick = (date: Date) => {
     setSelectedDate(date);
     setDialogOpen(true);
-    setEventType('attendance');
-    setAttendanceType('absent');
-    setSelectedEmployeeId('');
-    setAdvanceAmount('');
+    setEventType("attendance");
+    setAttendanceType("absent");
+    setSelectedEmployeeId("");
+    setAdvanceAmount("");
   };
 
   const handleCreateEvent = () => {
@@ -62,7 +90,7 @@ const AttendanceCalendarPage = () => {
 
     const dateStr = formatDate(selectedDate);
 
-    if (eventType === 'attendance') {
+    if (eventType === "attendance") {
       createAttendance({
         employeeId: selectedEmployeeId,
         date: dateStr,
@@ -82,41 +110,49 @@ const AttendanceCalendarPage = () => {
     setDialogOpen(false);
   };
 
-  const handleDeleteAttendance = (employeeId: string, date: string, e: React.MouseEvent) => {
+  const handleDeleteAttendance = (
+    id: string,
+    doc: string,
+    employeeId: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
-    if (window.confirm('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')) {
-      deleteAttendance(employeeId, date);
+    if (window.confirm("คุณแน่ใจหรือไม่ที่จะลบรายการนี้?")) {
+      deleteAttendance(id, doc, employeeId);
     }
   };
 
-  const handleDeleteAdvance = (employeeId: string, date: string, e: React.MouseEvent) => {
+  const handleDeleteAdvance = (
+    employeeId: string,
+    date: string,
+    e: React.MouseEvent,
+  ) => {
     e.stopPropagation();
-    if (window.confirm('คุณแน่ใจหรือไม่ที่จะลบรายการนี้?')) {
+    if (window.confirm("คุณแน่ใจหรือไม่ที่จะลบรายการนี้?")) {
       deleteAdvance(employeeId, date);
     }
   };
 
-  const getEventsForDay = (date: Date) => {
-    const dateStr = formatDate(date);
-    const attendance = attendanceRecords.filter(r => r.date === dateStr);
-    const advances = advanceRecords.filter(r => r.date === dateStr);
-    return { attendance, advances };
-  };
-
-
   return (
     <Layout>
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
           <Typography variant="h4" component="h1">
             ปฏิทินการลงเวลา
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
             <IconButton onClick={handlePrevMonth}>
               <ChevronLeftIcon />
             </IconButton>
             <Typography variant="h6">
-              {format(currentDate, 'MMMM yyyy', { locale: th })}
+              {format(currentDate, "MMMM yyyy", { locale: th })}
             </Typography>
             <IconButton onClick={handleNextMonth}>
               <ChevronRightIcon />
@@ -128,9 +164,13 @@ const AttendanceCalendarPage = () => {
           <CardContent>
             <Grid container spacing={1}>
               {/* Day headers */}
-              {['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'].map((day) => (
+              {["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((day) => (
                 <Grid item xs={12 / 7} key={day}>
-                  <Typography variant="subtitle2" align="center" fontWeight="bold">
+                  <Typography
+                    variant="subtitle2"
+                    align="center"
+                    fontWeight="bold"
+                  >
                     {day}
                   </Typography>
                 </Grid>
@@ -144,81 +184,102 @@ const AttendanceCalendarPage = () => {
               ))}
 
               {daysInMonth.map((day) => {
-                const events = getEventsForDay(day);
-
                 return (
                   <Grid item xs={12 / 7} key={day.toISOString()}>
                     <Card
                       variant="outlined"
                       sx={{
                         height: 120,
-                        cursor: 'pointer',
-                        '&:hover': { backgroundColor: '#f5f5f5' },
-                        overflow: 'auto',
+                        cursor: "pointer",
+                        "&:hover": { backgroundColor: "#f5f5f5" },
+                        overflow: "auto",
                       }}
                       onClick={() => handleDayClick(day)}
                     >
                       <Box sx={{ p: 1 }}>
                         <Typography variant="body2" fontWeight="bold">
-                          {format(day, 'd')}
+                          {format(day, "d")}
                         </Typography>
-                        
+
                         {/* Attendance events */}
-                        {events.attendance.map((record) => {
-                          const employee = employees.find(e => e.id === record.employeeId);
+                        {attendanceRecords.map((record) => {
+                          if (record.date !== format(day, "yyyy-MM-dd"))
+                            return null;
+                          const employee = employees.find(
+                            (e) => e.id === record.employeeId,
+                          );
                           if (!employee) return null;
                           return (
                             <Chip
                               key={`att-${record.employeeId}`}
-                              label={`${employee.name.substring(0, 8)} - ${record.type === 'absent' ? 'ขาด' : 'ครึ่งวัน'}`}
+                              label={`${employee.name.substring(0, 8)} - ${record.type === "absent" ? "ขาด" : "ครึ่งวัน"}`}
                               size="small"
-                              onDelete={(e) => handleDeleteAttendance(record.employeeId, record.date, e)}
+                              onDelete={(e) =>
+                                handleDeleteAttendance(
+                                  record.id,
+                                  format(currentDate, "yyyy-MM", {
+                                    locale: th,
+                                  }),
+                                  record.employeeId,
+                                  e,
+                                )
+                              }
                               sx={{
                                 backgroundColor: employee.color,
-                                color: '#fff',
-                                fontSize: '0.65rem',
+                                color: "#fff",
+                                fontSize: "0.65rem",
                                 height: 20,
                                 mt: 0.5,
-                                width: '100%',
-                                '& .MuiChip-deleteIcon': {
-                                  color: 'rgba(255, 255, 255, 0.7)',
+                                width: "100%",
+                                "& .MuiChip-deleteIcon": {
+                                  color: "rgba(255, 255, 255, 0.7)",
                                   height: 14,
                                   width: 14,
-                                  '&:hover': {
-                                    color: '#fff',
-                                  }
-                                }
+                                  "&:hover": {
+                                    color: "#fff",
+                                  },
+                                },
                               }}
                             />
                           );
                         })}
 
                         {/* Advance events */}
-                        {events.advances.map((record, idx) => {
-                          const employee = employees.find(e => e.id === record.employeeId);
+                        {advanceRecords.map((record, idx) => {
+                          if (record.date !== format(day, "yyyy-MM-dd"))
+                            return null;
+                          const employee = employees.find(
+                            (e) => e.id === record.employeeId,
+                          );
                           if (!employee) return null;
                           return (
                             <Chip
                               key={`adv-${record.employeeId}-${idx}`}
                               label={`${employee.name.substring(0, 8)} - ฿${record.amount}`}
                               size="small"
-                              onDelete={(e) => handleDeleteAdvance(record.employeeId, record.date, e)}
+                              onDelete={(e) =>
+                                handleDeleteAdvance(
+                                  record.employeeId,
+                                  record.date,
+                                  e,
+                                )
+                              }
                               sx={{
                                 backgroundColor: employee.color,
-                                color: '#fff',
-                                fontSize: '0.65rem',
+                                color: "#fff",
+                                fontSize: "0.65rem",
                                 height: 20,
                                 mt: 0.5,
-                                width: '100%',
+                                width: "100%",
                                 opacity: 0.8,
-                                '& .MuiChip-deleteIcon': {
-                                  color: 'rgba(255, 255, 255, 0.7)',
+                                "& .MuiChip-deleteIcon": {
+                                  color: "rgba(255, 255, 255, 0.7)",
                                   height: 14,
                                   width: 14,
-                                  '&:hover': {
-                                    color: '#fff',
-                                  }
-                                }
+                                  "&:hover": {
+                                    color: "#fff",
+                                  },
+                                },
                               }}
                             />
                           );
@@ -233,16 +294,25 @@ const AttendanceCalendarPage = () => {
         </Card>
 
         {/* Event Creation Dialog */}
-        <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
+        <Dialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          maxWidth="sm"
+          fullWidth
+        >
           <DialogTitle>
-            สร้างรายการ - {selectedDate && format(selectedDate, 'd MMMM yyyy', { locale: th })}
+            สร้างรายการ -{" "}
+            {selectedDate &&
+              format(selectedDate, "d MMMM yyyy", { locale: th })}
           </DialogTitle>
           <DialogContent>
             <FormControl fullWidth margin="normal">
               <InputLabel>ประเภทรายการ</InputLabel>
               <Select
                 value={eventType}
-                onChange={(e) => setEventType(e.target.value as 'attendance' | 'advance')}
+                onChange={(e) =>
+                  setEventType(e.target.value as "attendance" | "advance")
+                }
                 label="ประเภทรายการ"
               >
                 <MenuItem value="attendance">การลงเวลา (ขาด/ลา)</MenuItem>
@@ -265,12 +335,14 @@ const AttendanceCalendarPage = () => {
               </Select>
             </FormControl>
 
-            {eventType === 'attendance' ? (
+            {eventType === "attendance" ? (
               <FormControl fullWidth margin="normal">
                 <InputLabel>ประเภทการขาดงาน</InputLabel>
                 <Select
                   value={attendanceType}
-                  onChange={(e) => setAttendanceType(e.target.value as 'absent' | 'half')}
+                  onChange={(e) =>
+                    setAttendanceType(e.target.value as "absent" | "half")
+                  }
                   label="ประเภทการขาดงาน"
                 >
                   <MenuItem value="absent">ขาดงาน</MenuItem>
@@ -293,7 +365,10 @@ const AttendanceCalendarPage = () => {
             <Button
               onClick={handleCreateEvent}
               variant="contained"
-              disabled={!selectedEmployeeId || (eventType === 'advance' && !advanceAmount)}
+              disabled={
+                !selectedEmployeeId ||
+                (eventType === "advance" && !advanceAmount)
+              }
             >
               บันทึก
             </Button>

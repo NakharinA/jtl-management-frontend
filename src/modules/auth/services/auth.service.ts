@@ -1,5 +1,7 @@
 import { User, LoginResponse } from "../types";
 import { apiClient } from "../../../services/api.client";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../../../lib/firebase";
 
 const AUTH_TOKEN_KEY = "token"; // Matches api.client.ts expectation
 const AUTH_USER_KEY = "auth_user";
@@ -7,13 +9,21 @@ const AUTH_USER_KEY = "auth_user";
 export const authService = {
   // Real login
   login: async (email: string, password: string): Promise<User> => {
-    const response = await apiClient.post<LoginResponse>('/auth/login', { email, password });
+    // 1. Firebase Login using client SDK
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const firebaseToken = await userCredential.user.getIdToken();
+
+    // 2. Send Firebase token to backend to get session/app token
+    // The backend should now expect ONLY the token (or we send it as a field).
+    // Updating to send { token: firebaseToken } as per plan.
+    localStorage.setItem(AUTH_TOKEN_KEY , firebaseToken);
+    const response = await apiClient.post<LoginResponse>('/auth/login', {});
     
     // Extract token and user data
-    const { token, ...user } = response;
+    const { access_token, ...user } = response;
 
     // Store in localStorage
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    localStorage.setItem(AUTH_TOKEN_KEY, access_token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 
     return user;

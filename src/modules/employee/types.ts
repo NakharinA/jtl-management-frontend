@@ -2,7 +2,7 @@
 export interface Employee {
   id: string;
   name: string;
-  baseSalary: number;
-  paymentDay: number;
+  dailyRate: number;
+  paydayAnchor: number;
   color: string;
 }

@@ -6,7 +6,7 @@ export interface User {
 }
 
 export interface LoginResponse extends User {
-  token: string;
+  access_token: string;
 }
 
 export interface AuthState {
