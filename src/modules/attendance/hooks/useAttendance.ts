@@ -32,7 +32,6 @@ export const useAttendance = () => {
   const createRecord = async (record: Omit<AttendanceRecord, "id">) => {
     try {
       const newRecord = await attendanceService.create(record);
-      await loadRecords(); // Reload to ensure consistency
       return newRecord;
     } catch (error) {
       console.error("Failed to create attendance record", error);
@@ -43,9 +42,6 @@ export const useAttendance = () => {
   const deleteRecord = async (id: string, doc: string, employeeId: string) => {
     try {
       const success = await attendanceService.delete(id, doc, employeeId);
-      if (success) {
-        await loadRecords();
-      }
       return success;
     } catch (error) {
       console.error("Failed to delete attendance record", error);

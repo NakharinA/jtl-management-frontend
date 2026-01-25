@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Box,
   Card,
@@ -53,12 +53,13 @@ const AttendanceCalendarPage = () => {
     records: attendanceRecords,
     createRecord: createAttendance,
     deleteRecord: deleteAttendance,
-    setMonthAndLoad,
+    setMonthAndLoad: setAttendanceMonthAndLoad,
   } = useAttendance();
   const {
     records: advanceRecords,
     createRecord: createAdvance,
     deleteRecord: deleteAdvance,
+    setMonthAndLoad: setAdvanceMonthAndLoad,
   } = useAdvance();
 
   const monthStart = startOfMonth(currentDate);
@@ -68,12 +69,14 @@ const AttendanceCalendarPage = () => {
   const handlePrevMonth = async () => {
     const newValue = subMonths(currentDate, 1);
     setCurrentDate(newValue);
-    await setMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
+    setAttendanceMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
+    setAdvanceMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
   };
   const handleNextMonth = async () => {
     const newValue = addMonths(currentDate, 1);
     setCurrentDate(newValue);
-    await setMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
+    setAttendanceMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
+    setAdvanceMonthAndLoad(newValue.getFullYear(), newValue.getMonth() + 1);
   };
 
   const handleDayClick = (date: Date) => {
@@ -96,6 +99,10 @@ const AttendanceCalendarPage = () => {
         date: dateStr,
         type: attendanceType,
       });
+      setAttendanceMonthAndLoad(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+      );
     } else {
       const amount = parseFloat(advanceAmount);
       if (!isNaN(amount) && amount > 0) {
@@ -104,13 +111,17 @@ const AttendanceCalendarPage = () => {
           date: dateStr,
           amount,
         });
+        setAdvanceMonthAndLoad(
+          currentDate.getFullYear(),
+          currentDate.getMonth() + 1,
+        );
       }
     }
 
     setDialogOpen(false);
   };
 
-  const handleDeleteAttendance = (
+  const handleDeleteAttendance = async (
     id: string,
     doc: string,
     employeeId: string,
@@ -118,18 +129,27 @@ const AttendanceCalendarPage = () => {
   ) => {
     e.stopPropagation();
     if (window.confirm("คุณแน่ใจหรือไม่ที่จะลบรายการนี้?")) {
-      deleteAttendance(id, doc, employeeId);
+      await deleteAttendance(id, doc, employeeId);
+      setAttendanceMonthAndLoad(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+      );
     }
   };
 
-  const handleDeleteAdvance = (
+  const handleDeleteAdvance = async (
+    id: string,
+    doc: string,
     employeeId: string,
-    date: string,
     e: React.MouseEvent,
   ) => {
     e.stopPropagation();
     if (window.confirm("คุณแน่ใจหรือไม่ที่จะลบรายการนี้?")) {
-      deleteAdvance(employeeId, date);
+      await deleteAdvance(id, doc, employeeId);
+      setAdvanceMonthAndLoad(
+        currentDate.getFullYear(),
+        currentDate.getMonth() + 1,
+      );
     }
   };
 
@@ -259,8 +279,11 @@ const AttendanceCalendarPage = () => {
                               size="small"
                               onDelete={(e) =>
                                 handleDeleteAdvance(
+                                  record.id,
+                                  format(currentDate, "yyyy-MM", {
+                                    locale: th,
+                                  }),
                                   record.employeeId,
-                                  record.date,
                                   e,
                                 )
                               }

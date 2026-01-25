@@ -12,11 +12,18 @@ export const advanceService = {
     return apiClient.get<AdvanceRecord[]>("/advance", params);
   },
 
-  getByDateRange: async (
-    startDate: string,
-    endDate: string,
+  getByEmployeeId: async (
+    employeeId: string,
+    year: number,
+    month: number,
   ): Promise<AdvanceRecord[]> => {
-    return advanceService.getAll(startDate, endDate);
+    return apiClient.get<AdvanceRecord[]>(
+      `/advance/${year}/${month}/${employeeId}`,
+    );
+  },
+
+  getByMonth: async (year: number, month: number): Promise<AdvanceRecord[]> => {
+    return apiClient.get<AdvanceRecord[]>(`/advance/${year}/${month}`);
   },
 
   getByEmployeeAndMonth: async (
@@ -24,21 +31,24 @@ export const advanceService = {
     year: number,
     month: number,
   ): Promise<AdvanceRecord[]> => {
-    const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${month.toString().padStart(2, "0")}-${lastDay}`;
-
-    const records = await advanceService.getAll(startDate, endDate);
-    console.log("records : ", records);
-    return records.filter((r) => r.employeeId === employeeId);
+    const records = await advanceService.getByEmployeeId(
+      employeeId,
+      year,
+      month,
+    );
+    return records;
   },
 
-  create: async (record: AdvanceRecord): Promise<AdvanceRecord> => {
+  create: async (record: Omit<AdvanceRecord, "id">): Promise<AdvanceRecord> => {
     return apiClient.post<AdvanceRecord>("/advance", record);
   },
 
-  delete: async (employeeId: string, date: string): Promise<boolean> => {
-    await apiClient.delete("/advance", { employeeId, date });
+  delete: async (
+    id: string,
+    doc: string,
+    employeeId: string,
+  ): Promise<boolean> => {
+    await apiClient.delete(`/advance/${doc}/${employeeId}/${id}`);
     return true;
   },
 };

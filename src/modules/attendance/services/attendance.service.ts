@@ -12,17 +12,14 @@ export const attendanceService = {
     return apiClient.get<AttendanceRecord[]>("/attendance", params);
   },
 
-  getByEmployeeId: async (
+  getByEmployeeIdAndMonth: async (
     employeeId: string,
-    startDate?: string,
-    endDate?: string,
+    year: number,
+    month: number,
   ): Promise<AttendanceRecord[]> => {
-    const params: Record<string, string> = {};
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
+    console.log(employeeId, year, month);
     return apiClient.get<AttendanceRecord[]>(
-      `/attendance/employee/${employeeId}`,
-      params,
+      `/attendance/${year}/${month}/${employeeId}`,
     );
   },
 
@@ -38,20 +35,10 @@ export const attendanceService = {
     year: number,
     month: number,
   ): Promise<AttendanceRecord[]> => {
-    // API might not support filtering by employeeId directly in 'getAll', or maybe it does?
-    // The requirement says GET /attendance with startDate and endDate only.
-    // So we fetch by range and filter client side for specific employee if needed.
-    const startDate = `${year}-${month.toString().padStart(2, "0")}-01`;
-    // efficient way to get end of month is tricky without date-fns here, but let's just grab the whole month
-    // actually, let's just fetch everything for that range and filter.
-    // simpler: assume we can pass startDate and endDate covering the month.
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${year}-${month.toString().padStart(2, "0")}-${lastDay}`;
-
-    const records = await attendanceService.getByEmployeeId(
+    const records = await attendanceService.getByEmployeeIdAndMonth(
       employeeId,
-      startDate,
-      endDate,
+      year,
+      month,
     );
     return records;
   },

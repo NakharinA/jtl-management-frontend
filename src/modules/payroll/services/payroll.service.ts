@@ -37,7 +37,11 @@ export const calculatePayroll = (
     return date.isAfter(lastMonthAnchorDate) && date.isBefore(anchorDate);
   });
 
-  console.log(attendanceRecords);
+  console.log(
+    "lastMonthAnchorDate : ",
+    lastMonthAnchorDate.format("YYYY-MM-DD"),
+  );
+  console.log("anchorDate : ", anchorDate.format("YYYY-MM-DD"));
 
   advanceRecords = advanceRecords.filter((record) => {
     const date = dayjs(record.date).endOf("D");
@@ -47,7 +51,7 @@ export const calculatePayroll = (
     );
     return date.isAfter(lastMonthAnchorDate) && date.isBefore(anchorDate);
   });
-  console.log(advanceRecords);
+  console.log("advanceRecords : ", advanceRecords);
 
   const dailyRate = employee.dailyRate;
 
