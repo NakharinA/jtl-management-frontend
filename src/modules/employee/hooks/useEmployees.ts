@@ -6,36 +6,58 @@ export const useEmployees = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadEmployees = () => {
-    const data = employeeService.getAll();
-    setEmployees(data);
-    setIsLoading(false);
+  const loadEmployees = async () => {
+    setIsLoading(true);
+    try {
+      const data = await employeeService.getAll();
+      setEmployees(data);
+    } catch (error) {
+      console.error('Failed to load employees', error);
+      // Optional: Add setError state
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     loadEmployees();
   }, []);
 
-  const createEmployee = (data: Omit<Employee, 'id'>) => {
-    const newEmployee = employeeService.create(data);
-    setEmployees(prev => [...prev, newEmployee]);
-    return newEmployee;
+  const createEmployee = async (data: Omit<Employee, 'id'>) => {
+    try {
+      const newEmployee = await employeeService.create(data);
+      setEmployees(prev => [...prev, newEmployee]);
+      return newEmployee;
+    } catch (error) {
+      console.error('Failed to create employee', error);
+      throw error;
+    }
   };
 
-  const updateEmployee = (id: string, data: Partial<Omit<Employee, 'id'>>) => {
-    const updated = employeeService.update(id, data);
-    if (updated) {
-      setEmployees(prev => prev.map(e => e.id === id ? updated : e));
+  const updateEmployee = async (id: string, data: Partial<Omit<Employee, 'id'>>) => {
+    try {
+      const updated = await employeeService.update(id, data);
+      if (updated) {
+        setEmployees(prev => prev.map(e => e.id === id ? updated : e));
+      }
+      return updated;
+    } catch (error) {
+       console.error('Failed to update employee', error);
+       throw error;
     }
-    return updated;
   };
 
-  const deleteEmployee = (id: string) => {
-    const success = employeeService.delete(id);
-    if (success) {
-      setEmployees(prev => prev.filter(e => e.id !== id));
+  const deleteEmployee = async (id: string) => {
+    try {
+      const success = await employeeService.delete(id);
+      if (success) {
+        setEmployees(prev => prev.filter(e => e.id !== id));
+      }
+      return success;
+    } catch (error) {
+      console.error('Failed to delete employee', error);
+      return false;
     }
-    return success;
   };
 
   return {
@@ -47,3 +69,4 @@ export const useEmployees = () => {
     refreshEmployees: loadEmployees,
   };
 };
+

@@ -3,7 +3,10 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  password: string;
+}
+
+export interface LoginResponse extends User {
+  token: string;
 }
 
 export interface AuthState {

@@ -1,50 +1,40 @@
+import { apiClient } from '../../../services/api.client';
 import { Employee } from '../types';
 
-const STORAGE_KEY = 'employees';
-
 export const employeeService = {
-  getAll: (): Employee[] => {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-    try {
-      return JSON.parse(data);
-    } catch {
-      return [];
-    }
+  getAll: async (): Promise<Employee[]> => {
+    return apiClient.get<Employee[]>('/employees');
   },
 
-  getById: (id: string): Employee | null => {
-    const employees = employeeService.getAll();
+  getById: async (id: string): Promise<Employee | null> => {
+    // The API requirement doesn't explicitly list getById, so we might need to fetch all or assume the endpoint exists.
+    // Given the requirement 'GET /employees', let's filter purely client side if needed, OR safer:
+    // Ideally, we should request a specific endpoint. Assuming GET /employees/:id might exist or we filter from getAll.
+    // However, usually detailed view needs fresh data. Let's try to find it from getAll for now as per "Mock" phase behavior
+    // but using API data.
+    // UPDATE: The ApiRequirement.md mentions optional recommendations on other things but list:
+    // GET /employees
+    // POST /employees
+    // PUT /employees/:id
+    // DELETE /employees/:id
+    // It does not explicitly list GET /employees/:id.
+    // I will implementation it by fetching all and finding one to be safe, or just returning null if we want to be strict.
+    // Better path: Fetch all and find.
+    const employees = await apiClient.get<Employee[]>('/employees');
     return employees.find(e => e.id === id) || null;
   },
 
-  create: (employee: Omit<Employee, 'id'>): Employee => {
-    const employees = employeeService.getAll();
-    const newEmployee: Employee = {
-      ...employee,
-      id: Date.now().toString(),
-    };
-    employees.push(newEmployee);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
-    return newEmployee;
+  create: async (employee: Omit<Employee, 'id'>): Promise<Employee> => {
+    return apiClient.post<Employee>('/employees', employee);
   },
 
-  update: (id: string, data: Partial<Omit<Employee, 'id'>>): Employee | null => {
-    const employees = employeeService.getAll();
-    const index = employees.findIndex(e => e.id === id);
-    if (index === -1) return null;
-    
-    employees[index] = { ...employees[index], ...data };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
-    return employees[index];
+  update: async (id: string, data: Partial<Omit<Employee, 'id'>>): Promise<Employee | null> => {
+    return apiClient.put<Employee>(`/employees/${id}`, data);
   },
 
-  delete: (id: string): boolean => {
-    const employees = employeeService.getAll();
-    const filtered = employees.filter(e => e.id !== id);
-    if (filtered.length === employees.length) return false;
-    
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+  delete: async (id: string): Promise<boolean> => {
+    await apiClient.delete(`/employees/${id}`);
     return true;
   },
 };
+

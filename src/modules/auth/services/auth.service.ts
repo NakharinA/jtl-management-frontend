@@ -1,22 +1,19 @@
-import { User } from "../types";
+import { User, LoginResponse } from "../types";
+import { apiClient } from "../../../services/api.client";
 
-const AUTH_TOKEN_KEY = "auth_token";
+const AUTH_TOKEN_KEY = "token"; // Matches api.client.ts expectation
 const AUTH_USER_KEY = "auth_user";
 
 export const authService = {
-  // Mock login - accepts any credentials
+  // Real login
   login: async (email: string, password: string): Promise<User> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const user: User = {
-      id: "1",
-      email,
-      name: email.split("@")[0],
-      password: password,
-    };
+    const response = await apiClient.post<LoginResponse>('/auth/login', { email, password });
+    
+    // Extract token and user data
+    const { token, ...user } = response;
 
     // Store in localStorage
-    localStorage.setItem(AUTH_TOKEN_KEY, "mock-token-" + Date.now());
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
     localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
 
     return user;

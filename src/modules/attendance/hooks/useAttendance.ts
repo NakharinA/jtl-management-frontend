@@ -6,35 +6,51 @@ export const useAttendance = () => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const loadRecords = () => {
-    const data = attendanceService.getAll();
-    setRecords(data);
-    setIsLoading(false);
+  const loadRecords = async () => {
+    setIsLoading(true);
+    try {
+      const data = await attendanceService.getAll();
+      setRecords(data);
+    } catch (error) {
+      console.error('Failed to load attendance records', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     loadRecords();
   }, []);
 
-  const createRecord = (record: AttendanceRecord) => {
-    const newRecord = attendanceService.create(record);
-    loadRecords(); // Reload to ensure consistency
-    return newRecord;
-  };
-
-  const deleteRecord = (employeeId: string, date: string) => {
-    const success = attendanceService.delete(employeeId, date);
-    if (success) {
-      loadRecords();
+  const createRecord = async (record: AttendanceRecord) => {
+    try {
+      const newRecord = await attendanceService.create(record);
+      await loadRecords(); // Reload to ensure consistency
+      return newRecord;
+    } catch (error) {
+      console.error('Failed to create attendance record', error);
+      throw error;
     }
-    return success;
   };
 
-  const getByDateRange = (startDate: string, endDate: string) => {
+  const deleteRecord = async (employeeId: string, date: string) => {
+    try {
+      const success = await attendanceService.delete(employeeId, date);
+      if (success) {
+        await loadRecords();
+      }
+      return success;
+    } catch (error) {
+      console.error('Failed to delete attendance record', error);
+      return false;
+    }
+  };
+
+  const getByDateRange = async (startDate: string, endDate: string) => {
     return attendanceService.getByDateRange(startDate, endDate);
   };
 
-  const getByEmployeeAndMonth = (employeeId: string, year: number, month: number) => {
+  const getByEmployeeAndMonth = async (employeeId: string, year: number, month: number) => {
     return attendanceService.getByEmployeeAndMonth(employeeId, year, month);
   };
 
@@ -48,3 +64,4 @@ export const useAttendance = () => {
     refreshRecords: loadRecords,
   };
 };
+

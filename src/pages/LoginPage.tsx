@@ -93,10 +93,6 @@ const LoginPage = () => {
               Sign In
             </Button>
           </form>
-
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 3, textAlign: 'center' }}>
-            Mock authentication - any credentials will work
-          </Typography>
         </CardContent>
       </Card>
     </Box>
