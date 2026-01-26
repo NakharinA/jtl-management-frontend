@@ -1,9 +1,8 @@
-const BASE_URL = 'http://localhost:3000';
-// const BASE_URL = 'https://api-home.pueyleng.com';
+const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
 export const apiClient = {
   get: async <T>(url: string, params?: Record<string, string>): Promise<T> => {
-    const query = params ? `?${new URLSearchParams(params)}` : '';
+    const query = params ? `?${new URLSearchParams(params)}` : "";
     const response = await fetch(`${BASE_URL}${url}${query}`, {
       headers: getHeaders(),
     });
@@ -12,7 +11,7 @@ export const apiClient = {
 
   post: async <T>(url: string, data: any): Promise<T> => {
     const response = await fetch(`${BASE_URL}${url}`, {
-      method: 'POST',
+      method: "POST",
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
@@ -21,17 +20,20 @@ export const apiClient = {
 
   put: async <T>(url: string, data: any): Promise<T> => {
     const response = await fetch(`${BASE_URL}${url}`, {
-      method: 'PUT',
+      method: "PUT",
       headers: getHeaders(),
       body: JSON.stringify(data),
     });
     return handleResponse(response);
   },
 
-  delete: async <T>(url: string, params?: Record<string, string>): Promise<T> => {
-     const query = params ? `?${new URLSearchParams(params)}` : '';
+  delete: async <T>(
+    url: string,
+    params?: Record<string, string>,
+  ): Promise<T> => {
+    const query = params ? `?${new URLSearchParams(params)}` : "";
     const response = await fetch(`${BASE_URL}${url}${query}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: getHeaders(),
     });
     return handleResponse(response);
@@ -39,18 +41,19 @@ export const apiClient = {
 };
 
 const getHeaders = () => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   return {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 };
 
 const handleResponse = async (response: Response) => {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'Unknown error' }));
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Unknown error" }));
     throw new Error(error.message || `API Error: ${response.statusText}`);
   }
   return response.json();
 };
-
