@@ -4,7 +4,7 @@ import { advanceService } from "../services/advance.service";
 
 export const useAdvance = () => {
   const [records, setRecords] = useState<AdvanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const setMonthAndLoad = async (year: number, month: number) => {
     await loadRecords(year, month);
@@ -14,6 +14,7 @@ export const useAdvance = () => {
     year: number = new Date().getFullYear(),
     month: number = new Date().getMonth() + 1,
   ) => {
+    if (isLoading) return;
     setIsLoading(true);
     try {
       const data = await advanceService.getByMonth(year, month);
@@ -32,7 +33,6 @@ export const useAdvance = () => {
   const createRecord = async (record: Omit<AdvanceRecord, "id">) => {
     try {
       const newRecord = await advanceService.create(record);
-      await loadRecords(); // Reload to ensure consistency
       return newRecord;
     } catch (error) {
       console.error("Failed to create advance record", error);

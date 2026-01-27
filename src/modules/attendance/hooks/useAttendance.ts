@@ -4,7 +4,7 @@ import { attendanceService } from "../services/attendance.service";
 
 export const useAttendance = () => {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const setMonthAndLoad = async (year: number, month: number) => {
     await loadRecords(year, month);
@@ -14,6 +14,7 @@ export const useAttendance = () => {
     year: number = new Date().getFullYear(),
     month: number = new Date().getMonth() + 1,
   ) => {
+    if (isLoading) return;
     setIsLoading(true);
     try {
       const data = await attendanceService.getByMonth(year, month);

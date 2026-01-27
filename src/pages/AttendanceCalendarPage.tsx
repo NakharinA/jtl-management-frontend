@@ -88,7 +88,7 @@ const AttendanceCalendarPage = () => {
     setAdvanceAmount("");
   };
 
-  const handleCreateEvent = () => {
+  const handleCreateEvent = async () => {
     if (!selectedDate || !selectedEmployeeId) return;
 
     const dateStr = formatDate(selectedDate);
@@ -111,7 +111,7 @@ const AttendanceCalendarPage = () => {
           date: dateStr,
           amount,
         });
-        setAdvanceMonthAndLoad(
+        await setAdvanceMonthAndLoad(
           currentDate.getFullYear(),
           currentDate.getMonth() + 1,
         );
