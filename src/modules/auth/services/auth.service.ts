@@ -46,7 +46,20 @@ export const authService = {
   },
 
   isAuthenticated: (): boolean => {
-    return !!localStorage.getItem(AUTH_TOKEN_KEY);
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!token) return false;
+
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload.exp && Date.now() >= payload.exp * 1000) {
+        localStorage.removeItem(AUTH_TOKEN_KEY);
+        localStorage.removeItem(AUTH_USER_KEY);
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   getToken: (): string | null => {

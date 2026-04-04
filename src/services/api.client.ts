@@ -49,6 +49,12 @@ const getHeaders = () => {
 };
 
 const handleResponse = async (response: Response) => {
+  if (response.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("auth_user");
+    window.location.href = "/login";
+    throw new Error("Session expired. Please log in again.");
+  }
   if (!response.ok) {
     const error = await response
       .json()
