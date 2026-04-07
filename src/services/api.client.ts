@@ -38,6 +38,17 @@ export const apiClient = {
     });
     return handleResponse(response);
   },
+
+  postForm: async <T>(url: string, formData: FormData, params?: Record<string, string>): Promise<T> => {
+    const query = params ? `?${new URLSearchParams(params)}` : "";
+    const token = localStorage.getItem("token");
+    const response = await fetch(`${BASE_URL}${url}${query}`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+    return handleResponse(response);
+  },
 };
 
 const getHeaders = () => {

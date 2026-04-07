@@ -20,6 +20,7 @@ import { useAuth } from '@/modules/auth/hooks/useAuth';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import PeopleIcon from '@mui/icons-material/People';
 import PaymentIcon from '@mui/icons-material/Payment';
+import InventoryIcon from '@mui/icons-material/Inventory';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -56,6 +57,7 @@ export const Layout = ({ children }: LayoutProps) => {
     { path: '/calendar', label: 'ปฏิทิน', icon: <CalendarMonthIcon /> },
     { path: '/employees', label: 'พนักงาน', icon: <PeopleIcon /> },
     { path: '/payroll', label: 'เงินเดือน', icon: <PaymentIcon /> },
+    { path: '/products', label: 'สินค้า', icon: <InventoryIcon /> },
   ];
 
   return (

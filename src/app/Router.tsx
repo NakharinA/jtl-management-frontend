@@ -4,6 +4,7 @@ import LoginPage from '@/pages/LoginPage';
 import AttendanceCalendarPage from '@/pages/AttendanceCalendarPage';
 import EmployeeConfigPage from '@/pages/EmployeeConfigPage';
 import PayrollPage from '@/pages/PayrollPage';
+import ProductPage from '@/pages/ProductPage';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 
 export const Router = () => {
@@ -39,6 +40,14 @@ export const Router = () => {
           element={
             <ProtectedRoute>
               <PayrollPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/products"
+          element={
+            <ProtectedRoute>
+              <ProductPage />
             </ProtectedRoute>
           }
         />
