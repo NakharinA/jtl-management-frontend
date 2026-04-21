@@ -300,9 +300,9 @@ const ProductPage = () => {
       const payload: CreateProductPayload = {
         productName: formData.productName,
         productType: formData.productType,
-        productCost: parseFloat(formData.productCost),
-        wholesalePrice: parseFloat(formData.wholesalePrice),
-        retailPrice: parseFloat(formData.retailPrice),
+        productCost: parseFloat(formData.productCost) || 0,
+        wholesalePrice: parseFloat(formData.wholesalePrice) || 0,
+        retailPrice: parseFloat(formData.retailPrice) || 0,
         barcode: formData.barcode,
         productAttribute: parsedAttributes,
         imageUrl: finalImageUrl || undefined,
