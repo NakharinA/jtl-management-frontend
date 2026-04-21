@@ -51,9 +51,9 @@ const CATEGORY_COLORS = [
 const EMPTY_FORM = {
   productName: '',
   productType: '',
-  productCost: '',
-  wholesalePrice: '',
-  retailPrice: '',
+  productCost: 0,
+  wholesalePrice: 0,
+  retailPrice: 0,
   barcode: '',
   productAttribute: '',
   imageUrl: '',
@@ -243,9 +243,9 @@ const ProductPage = () => {
     setFormData({
       productName: product.productName,
       productType: product.productType,
-      productCost: product.productCost.toString(),
-      wholesalePrice: product.wholesalePrice.toString(),
-      retailPrice: product.retailPrice.toString(),
+      productCost: product.productCost,
+      wholesalePrice: product.wholesalePrice,
+      retailPrice: product.retailPrice,
       barcode: product.barcode,
       productAttribute: Object.keys(product.productAttribute).length
         ? JSON.stringify(product.productAttribute, null, 2)
@@ -300,9 +300,9 @@ const ProductPage = () => {
       const payload: CreateProductPayload = {
         productName: formData.productName,
         productType: formData.productType,
-        productCost: parseFloat(formData.productCost),
-        wholesalePrice: parseFloat(formData.wholesalePrice),
-        retailPrice: parseFloat(formData.retailPrice),
+        productCost: formData.productCost,
+        wholesalePrice: formData.wholesalePrice,
+        retailPrice: formData.retailPrice,
         barcode: formData.barcode,
         productAttribute: parsedAttributes,
         imageUrl: finalImageUrl || undefined,
@@ -586,7 +586,7 @@ const ProductPage = () => {
               label="ราคาทุน (฿)"
               type="number"
               value={formData.productCost}
-              onChange={(e) => setFormData({ ...formData, productCost: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, productCost: parseFloat(e.target.value) })}
               margin="normal"
               inputProps={{ min: 0, step: 0.01 }}
             />
@@ -595,7 +595,7 @@ const ProductPage = () => {
               label="ราคาส่ง (฿)"
               type="number"
               value={formData.wholesalePrice}
-              onChange={(e) => setFormData({ ...formData, wholesalePrice: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, wholesalePrice: parseFloat(e.target.value) })}
               margin="normal"
               inputProps={{ min: 0, step: 0.01 }}
             />
@@ -604,7 +604,7 @@ const ProductPage = () => {
               label="ราคาปลีก (฿)"
               type="number"
               value={formData.retailPrice}
-              onChange={(e) => setFormData({ ...formData, retailPrice: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, retailPrice: parseFloat(e.target.value) })}
               margin="normal"
               inputProps={{ min: 0, step: 0.01 }}
             />
