@@ -25,4 +25,8 @@ export const productService = {
   getPriceLogs: async (id: string): Promise<PriceLog[]> => {
     return apiClient.get<PriceLog[]>(`/product/${id}/price-logs`);
   },
+
+  getCategories: async (): Promise<string[]> => {
+    return apiClient.get<string[]>('/product/categories');
+  },
 };

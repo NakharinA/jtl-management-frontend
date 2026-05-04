@@ -2,6 +2,8 @@ export interface Product {
   id: string;
   productName: string;
   productType: string;
+  productCategory?: string;
+  stock?: number;
   productAttribute: Record<string, string>;
   productCost: number;
   wholesalePrice: number;
