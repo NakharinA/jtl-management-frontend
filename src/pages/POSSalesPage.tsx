@@ -58,6 +58,7 @@ const POSSalesPage = () => {
   const resetConsumer = consumer.reset;
 
   const {
+    products,
     categories,
     isLoading: productsLoading,
     searchQuery,
@@ -68,9 +69,7 @@ const POSSalesPage = () => {
   } = usePOSProducts();
 
   const {
-    cartId,
     items,
-    isCartLoading,
     cartError,
     subtotal,
     itemCount,
@@ -81,7 +80,7 @@ const POSSalesPage = () => {
     clearCart,
     restoreItems,
     dismissError,
-  } = useCart();
+  } = useCart(products);
 
   // Notice shown when checkout bounces back to consumer lookup (T4)
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
@@ -115,7 +114,7 @@ const POSSalesPage = () => {
     confirmCheckout,
     retryCheckout,
     closeCheckout,
-  } = useCheckout(cartId, handleClearCart, activeConsumer?.id ?? null, {
+  } = useCheckout(items, handleClearCart, activeConsumer?.id ?? null, {
     onConsumerRequired: handleConsumerRequired,
   });
 
@@ -152,11 +151,11 @@ const POSSalesPage = () => {
 
   const handleCloseDialog = () => {
     if (step !== 'SUCCESS' && pendingOrder) {
-      // The order was created (server cart deleted) but not paid. "Keep the
-      // cart" = rebuild a fresh server cart from the order's items so the
+      // The order was created but not paid (the local cart was kept, but
+      // restore it from the order so it matches what was ordered). The
       // cashier can edit it and check out again. The unpaid order is left
       // open/pending on the server; it can be cancelled from order history.
-      void restoreItems(pendingOrder.items);
+      restoreItems(pendingOrder.items);
     }
     closeCheckout();
   };
@@ -208,7 +207,6 @@ const POSSalesPage = () => {
             // Auto-switch to cart on mobile after adding
             if (!isDesktop) setMobileTab(1);
           }}
-          disabled={isCartLoading}
         />
       </Box>
     </Box>
@@ -285,14 +283,13 @@ const POSSalesPage = () => {
         items={items}
         onUpdateQuantity={updateQuantity}
         onRemove={removeItem}
-        disabled={isCartLoading}
       />
 
       {/* Summary + checkout */}
       <OrderSummary subtotal={subtotal} />
       <CheckoutButtons
         onCheckout={handleCheckout}
-        disabled={items.length === 0 || isCartLoading}
+        disabled={items.length === 0}
       />
     </Paper>
   );

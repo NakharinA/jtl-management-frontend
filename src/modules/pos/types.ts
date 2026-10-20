@@ -14,13 +14,15 @@ export interface CartItem {
   productName: string;
   quantity: number;
   unitPrice: number;
+  /** Controlled product: needs a consumer at checkout and may have a per-order limit. */
+  isControlled?: boolean;
+  maxAmountPerOrder?: number;
 }
 
-export interface Cart {
-  id: string;
-  items: CartItem[];
-  createdAt: string;
-  updatedAt: string;
+/** One line sent to POST /pos/orders. */
+export interface OrderLineInput {
+  productId: string;
+  quantity: number;
 }
 
 // ─── Order ────────────────────────────────────────────────────────────────────
@@ -35,7 +37,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
-  cartId: string;
+  cartId?: string | null;
   items: OrderItem[];
   subtotal: number;
   taxRate: number;
@@ -56,16 +58,6 @@ export interface Consumer {
   phone: string;
   name: string;
   registeredAt: string;
-}
-
-export interface CheckoutPreview {
-  cartId: string;
-  items: OrderItem[];
-  subtotal: number;
-  taxRate: number;
-  tax: number;
-  discount: number;
-  total: number;
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────

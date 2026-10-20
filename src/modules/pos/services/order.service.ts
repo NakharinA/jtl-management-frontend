@@ -1,5 +1,5 @@
 import { apiClient } from '../../../services/api.client';
-import { CheckoutPreview, Order } from '../types';
+import { Order, OrderLineInput } from '../types';
 
 export const orderService = {
   getOrders: async (params?: {
@@ -16,26 +16,18 @@ export const orderService = {
     return apiClient.get<Order[]>('/pos/orders', Object.keys(query).length ? query : undefined);
   },
 
-  checkoutPreview: async (
-    cartId: string,
-    taxRate = 0,
-    discount = 0,
-  ): Promise<CheckoutPreview> => {
-    return apiClient.post<CheckoutPreview>('/pos/checkout', {
-      cartId,
-      taxRate,
-      discount,
-    });
-  },
-
+  /**
+   * Creates the order from the local cart. Items are sent inline; prices are
+   * taken from the products on the server (retail price).
+   */
   confirmOrder: async (
-    cartId: string,
+    items: OrderLineInput[],
     taxRate = 0,
     discount = 0,
     consumerId?: string,
   ): Promise<Order> => {
     return apiClient.post<Order>('/pos/orders', {
-      cartId,
+      items,
       taxRate,
       discount,
       ...(consumerId ? { consumerId } : {}),

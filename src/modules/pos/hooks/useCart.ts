@@ -1,186 +1,184 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Cart, CartItem } from '../types';
-import { cartService } from '../services/cart.service';
+import { CartItem } from '../types';
 import { Product } from '../../product/types';
 
-const CART_ID_KEY = 'pos_cart_id';
-const CONTROLLED_IDS_KEY = 'pos_controlled_ids';
+/**
+ * The POS cart lives only in the browser: adding, changing and removing items
+ * makes no API calls. The server sees the items once, at checkout
+ * (POST /pos/orders with the items inline).
+ *
+ * The in-progress cart is kept in localStorage so a page refresh does not lose it.
+ */
+const STORAGE_KEY = 'pos_local_cart';
+// Keys of the old server-side cart; removed on load.
+const LEGACY_KEYS = ['pos_cart_id', 'pos_controlled_ids'];
 
-function loadControlledIds(): Set<string> {
+function loadItems(): CartItem[] {
   try {
-    const raw = localStorage.getItem(CONTROLLED_IDS_KEY);
-    if (!raw) return new Set();
-    return new Set(JSON.parse(raw) as string[]);
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (i): i is CartItem =>
+        !!i &&
+        typeof i.productId === 'string' &&
+        typeof i.productName === 'string' &&
+        typeof i.quantity === 'number' &&
+        i.quantity > 0 &&
+        typeof i.unitPrice === 'number',
+    );
   } catch {
-    return new Set();
+    return [];
   }
 }
 
-function saveControlledIds(ids: Set<string>): void {
-  localStorage.setItem(CONTROLLED_IDS_KEY, JSON.stringify([...ids]));
+function saveItems(items: CartItem[]): void {
+  try {
+    if (items.length === 0) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch {
+    // Storage full or unavailable: the cart still works for this page view.
+  }
 }
 
-export const useCart = () => {
-  const [cartId, setCartId] = useState<string | null>(
-    () => localStorage.getItem(CART_ID_KEY),
-  );
-  const [items, setItems] = useState<CartItem[]>([]);
-  const [controlledIds, setControlledIds] = useState<Set<string>>(loadControlledIds);
-  const [isCartLoading, setIsCartLoading] = useState(false);
+/** Same price the backend uses for POS lines (product retail price). */
+function toCartItem(product: Product, quantity: number): CartItem {
+  return {
+    productId: product.id,
+    productName: product.productName,
+    quantity,
+    unitPrice: Number(product.retailPrice),
+    isControlled: !!product.isControlled,
+    maxAmountPerOrder: product.maxAmountPerOrder ?? undefined,
+  };
+}
+
+/** Mirrors the backend's per-order limit for controlled products. */
+function limitError(item: CartItem, quantity: number): string | null {
+  if (
+    item.isControlled &&
+    item.maxAmountPerOrder != null &&
+    quantity > item.maxAmountPerOrder
+  ) {
+    return `สินค้าควบคุม "${item.productName}" ซื้อได้สูงสุด ${item.maxAmountPerOrder} ชิ้นต่อออเดอร์`;
+  }
+  return null;
+}
+
+/**
+ * @param products product list already loaded on the page; used to refresh
+ *   names/prices of a restored cart and to look up controlled-product rules.
+ */
+export const useCart = (products: Product[] = []) => {
+  const [items, setItems] = useState<CartItem[]>(loadItems);
   const [cartError, setCartError] = useState<string | null>(null);
 
-  // Restore cart from localStorage on mount
   useEffect(() => {
-    const storedId = localStorage.getItem(CART_ID_KEY);
-    if (!storedId) return;
-    setIsCartLoading(true);
-    cartService
-      .getCart(storedId)
-      .then((cart) => {
-        setCartId(cart.id);
-        setItems(cart.items);
-      })
-      .catch((err: Error) => {
-        // 404 or any error → start fresh
-        if (err.message.includes('not found') || err.message.includes('404')) {
-          localStorage.removeItem(CART_ID_KEY);
-          setCartId(null);
-          setItems([]);
-        }
-      })
-      .finally(() => setIsCartLoading(false));
+    try {
+      LEGACY_KEYS.forEach((k) => localStorage.removeItem(k));
+    } catch {
+      // ignore
+    }
   }, []);
 
-  const syncCart = useCallback((cart: Cart) => {
-    setCartId(cart.id);
-    setItems(cart.items);
-    localStorage.setItem(CART_ID_KEY, cart.id);
-    // Prune controlled IDs that are no longer in the cart
-    setControlledIds((prev) => {
-      const cartProductIds = new Set(cart.items.map((i) => i.productId));
-      const next = new Set([...prev].filter((id) => cartProductIds.has(id)));
-      saveControlledIds(next);
-      return next;
+  useEffect(() => {
+    saveItems(items);
+  }, [items]);
+
+  // Once products are loaded, bring stored lines up to date (price, name,
+  // controlled flags) so the cart shows what the backend will charge.
+  useEffect(() => {
+    if (products.length === 0) return;
+    const byId = new Map(products.map((p) => [p.id, p]));
+    setItems((prev) => {
+      let changed = false;
+      const next = prev.map((item) => {
+        const product = byId.get(item.productId);
+        if (!product) return item;
+        const fresh = toCartItem(product, item.quantity);
+        if (
+          fresh.unitPrice !== item.unitPrice ||
+          fresh.productName !== item.productName ||
+          fresh.isControlled !== item.isControlled ||
+          fresh.maxAmountPerOrder !== item.maxAmountPerOrder
+        ) {
+          changed = true;
+          return fresh;
+        }
+        return item;
+      });
+      return changed ? next : prev;
+    });
+  }, [products]);
+
+  const addItem = useCallback((product: Product) => {
+    setCartError(null);
+    setItems((prev) => {
+      const existing = prev.find((i) => i.productId === product.id);
+      const candidate = toCartItem(product, (existing?.quantity ?? 0) + 1);
+      const error = limitError(candidate, candidate.quantity);
+      if (error) {
+        setCartError(error);
+        return prev;
+      }
+      return existing
+        ? prev.map((i) => (i.productId === product.id ? candidate : i))
+        : [...prev, candidate];
     });
   }, []);
 
-  const addItem = useCallback(
-    async (product: Product) => {
-      setIsCartLoading(true);
-      setCartError(null);
-      try {
-        let activeCartId = cartId;
-        if (!activeCartId) {
-          const newCart = await cartService.createCart();
-          activeCartId = newCart.id;
-          localStorage.setItem(CART_ID_KEY, activeCartId);
-          setCartId(activeCartId);
-        }
-        const updated = await cartService.addItem(activeCartId, product.id, 1);
-        if (product.isControlled) {
-          setControlledIds((prev) => {
-            const next = new Set(prev).add(product.id);
-            saveControlledIds(next);
-            return next;
-          });
-        }
-        syncCart(updated);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
-        setCartError(msg);
-      } finally {
-        setIsCartLoading(false);
+  const updateQuantity = useCallback((productId: string, quantity: number) => {
+    setCartError(null);
+    setItems((prev) => {
+      if (quantity <= 0) return prev.filter((i) => i.productId !== productId);
+      const item = prev.find((i) => i.productId === productId);
+      if (!item) return prev;
+      const error = limitError(item, quantity);
+      if (error) {
+        setCartError(error);
+        return prev;
       }
-    },
-    [cartId, syncCart],
-  );
+      return prev.map((i) => (i.productId === productId ? { ...i, quantity } : i));
+    });
+  }, []);
 
-  const updateQuantity = useCallback(
-    async (productId: string, quantity: number) => {
-      if (!cartId) return;
-      setIsCartLoading(true);
-      setCartError(null);
-      try {
-        if (quantity <= 0) {
-          const updated = await cartService.removeItem(cartId, productId);
-          syncCart(updated);
-        } else {
-          const updated = await cartService.updateItem(
-            cartId,
-            productId,
-            quantity,
-          );
-          syncCart(updated);
-        }
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
-        setCartError(msg);
-      } finally {
-        setIsCartLoading(false);
-      }
-    },
-    [cartId, syncCart],
-  );
-
-  const removeItem = useCallback(
-    async (productId: string) => {
-      if (!cartId) return;
-      setIsCartLoading(true);
-      setCartError(null);
-      try {
-        const updated = await cartService.removeItem(cartId, productId);
-        syncCart(updated);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
-        setCartError(msg);
-      } finally {
-        setIsCartLoading(false);
-      }
-    },
-    [cartId, syncCart],
-  );
+  const removeItem = useCallback((productId: string) => {
+    setCartError(null);
+    setItems((prev) => prev.filter((i) => i.productId !== productId));
+  }, []);
 
   const clearCart = useCallback(() => {
-    localStorage.removeItem(CART_ID_KEY);
-    localStorage.removeItem(CONTROLLED_IDS_KEY);
-    setCartId(null);
     setItems([]);
-    setControlledIds(new Set());
     setCartError(null);
   }, []);
 
   /**
-   * Rebuilds a fresh server cart from previously ordered items. Used when an
-   * order was created (which deletes the server cart) but could not be paid,
-   * so the cashier can edit the items and check out again.
+   * Puts previously ordered items back into the cart. Used when an order was
+   * created but could not be paid, so the cashier can edit the items and
+   * check out again.
    */
   const restoreItems = useCallback(
-    async (toRestore: { productId: string; quantity: number }[]) => {
-      setIsCartLoading(true);
+    (toRestore: { productId: string; productName: string; quantity: number; unitPrice: number }[]) => {
+      const byId = new Map(products.map((p) => [p.id, p]));
       setCartError(null);
-      let cart: Cart | null = null;
-      try {
-        cart = await cartService.createCart();
-        localStorage.setItem(CART_ID_KEY, cart.id);
-        for (const item of toRestore) {
-          cart = await cartService.addItem(cart.id, item.productId, item.quantity);
-        }
-        syncCart(cart);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
-        setCartError(`ไม่สามารถกู้คืนตะกร้าได้ครบ: ${msg}`);
-        if (cart) {
-          syncCart(cart);
-        } else {
-          localStorage.removeItem(CART_ID_KEY);
-          setCartId(null);
-          setItems([]);
-        }
-      } finally {
-        setIsCartLoading(false);
-      }
+      setItems(
+        toRestore
+          .filter((i) => i.quantity > 0)
+          .map((i) => {
+            const product = byId.get(i.productId);
+            return product
+              ? toCartItem(product, i.quantity)
+              : {
+                  productId: i.productId,
+                  productName: i.productName,
+                  quantity: i.quantity,
+                  unitPrice: Number(i.unitPrice),
+                };
+          }),
+      );
     },
-    [syncCart],
+    [products],
   );
 
   const dismissError = useCallback(() => setCartError(null), []);
@@ -195,12 +193,10 @@ export const useCart = () => {
     [items],
   );
 
-  const cartHasControlled = controlledIds.size > 0;
+  const cartHasControlled = useMemo(() => items.some((i) => i.isControlled), [items]);
 
   return {
-    cartId,
     items,
-    isCartLoading,
     cartError,
     subtotal,
     itemCount,
