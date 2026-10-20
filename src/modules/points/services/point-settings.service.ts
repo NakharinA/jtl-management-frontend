@@ -26,6 +26,11 @@ export const pointSettingsService = {
   setGroupProductTypes: (id: number, productTypes: string[]) =>
     apiClient.put<PointGroup>(`/points/groups/${id}/product-types`, { productTypes }),
 
+  updateProductTypeRule: (
+    productType: string,
+    input: { pointsPerUnit?: number | null; defaultProfitPerUnit?: number | null },
+  ) => apiClient.patch<PointProductType>(`/points/product-types/${encodeURIComponent(productType)}`, input),
+
   listProductTypes: () => apiClient.get<PointProductType[]>('/points/product-types'),
 
   preview: (groupId?: number) =>
@@ -43,6 +48,8 @@ export const toThaiPointSettingsError = (err: unknown, fallback = 'เกิด�
   if (/earnSharePercent/i.test(msg)) return 'สัดส่วนคืนกำไรต้องอยู่ระหว่าง 0–100%';
   if (/defaultMarginPercent/i.test(msg)) return 'กำไรเริ่มต้นต้องอยู่ระหว่าง 0–100%';
   if (/name must/i.test(msg) || /name is required/i.test(msg)) return 'กรุณากรอกชื่อกลุ่ม (ไม่เกิน 100 ตัวอักษร)';
+  if (/pointsPerUnit|defaultProfitPerUnit/i.test(msg)) return 'ค่าต้องอยู่ระหว่าง 0–100,000';
+  if (/not in a point group/i.test(msg)) return 'ประเภทสินค้านี้ไม่ได้อยู่ในกลุ่มแล้ว (โหลดหน้าใหม่)';
   if (/not found/i.test(msg)) return 'ไม่พบกลุ่ม (อาจถูกลบไปแล้ว)';
   return msg;
 };

@@ -2,18 +2,11 @@ import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Chip,
   CircularProgress,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
   IconButton,
-  InputAdornment,
   Paper,
   Snackbar,
   Table,
@@ -24,11 +17,9 @@ import {
   TablePagination,
   TableRow,
   TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
+import ExposureIcon from '@mui/icons-material/Exposure';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import CloseIcon from '@mui/icons-material/Close';
 import { format } from 'date-fns';
@@ -36,14 +27,14 @@ import { Layout } from '@/shared/components/Layout';
 import { memberService, toThaiMemberError } from '@/modules/member/services/member.service';
 import { Member } from '@/modules/member/types';
 import { pointsService, toThaiPointsError } from '@/modules/points/services/points.service';
+import { AdjustPointsDialog } from '@/modules/points/components/AdjustPointsDialog';
+import { MemberPicker } from '@/modules/points/components/MemberPicker';
+import { useDebounced } from '@/shared/hooks/useDebounced';
 import {
-  MAX_POINT_DELTA,
-  POINT_REASON_MAX_LENGTH,
+  AdjustPointsResult,
   POINT_TRANSACTION_TYPE_LABEL,
   PointTransaction,
 } from '@/modules/points/types';
-
-const SEARCH_DEBOUNCE_MS = 300;
 
 const formatDateTime = (iso: string) => format(new Date(iso), 'dd/MM/yyyy HH:mm');
 const formatPoints = (n: number) => n.toLocaleString('th-TH');
@@ -66,97 +57,17 @@ const ReasonCell = ({ t }: { t: PointTransaction }) => (
   </>
 );
 
-const useDebounced = <T,>(value: T, ms = SEARCH_DEBOUNCE_MS): T => {
-  const [debounced, setDebounced] = useState(value);
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(value), ms);
-    return () => clearTimeout(t);
-  }, [value, ms]);
-  return debounced;
-};
-
-/** Search box that looks members up by name / phone / shop name. */
-const MemberPicker = ({ value, onChange }: { value: Member | null; onChange: (m: Member | null) => void }) => {
-  const [input, setInput] = useState('');
-  const debouncedInput = useDebounced(input);
-  const [options, setOptions] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const search = debouncedInput.trim();
-    if (!search) {
-      setOptions([]);
-      return;
-    }
-    let cancelled = false;
-    setLoading(true);
-    memberService
-      .list({ search, page: 1, pageSize: 10 })
-      .then((res) => !cancelled && setOptions(res.items))
-      .catch(() => !cancelled && setOptions([]))
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedInput]);
-
-  return (
-    <Autocomplete
-      sx={{ maxWidth: 420, flexGrow: 1 }}
-      size="small"
-      value={value}
-      options={value && !options.some((o) => o.id === value.id) ? [value, ...options] : options}
-      filterOptions={(x) => x}
-      getOptionLabel={(m) => `${m.name} (${m.phone})`}
-      isOptionEqualToValue={(a, b) => a.id === b.id}
-      loading={loading}
-      onChange={(_, m) => onChange(m)}
-      inputValue={input}
-      onInputChange={(_, v) => setInput(v)}
-      noOptionsText={input.trim() ? 'ไม่พบสมาชิก' : 'พิมพ์ชื่อหรือเบอร์โทรเพื่อค้นหา'}
-      loadingText="กำลังค้นหา..."
-      renderOption={(props, m) => (
-        <li {...props} key={m.id}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
-            <Box>
-              <Typography variant="body2">{m.name}</Typography>
-              <Typography variant="caption" color="text.secondary">
-                {m.phone}
-                {m.shopName ? ` · ${m.shopName}` : ''}
-              </Typography>
-            </Box>
-            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
-              {formatPoints(m.points)} แต้ม
-            </Typography>
-          </Box>
-        </li>
-      )}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          placeholder="ค้นหาสมาชิก: ชื่อ, เบอร์โทร หรือชื่อร้าน..."
-          InputProps={{
-            ...params.InputProps,
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon fontSize="small" />
-              </InputAdornment>
-            ),
-            endAdornment: (
-              <>
-                {loading && <CircularProgress size={18} />}
-                {params.InputProps.endAdornment}
-              </>
-            ),
-          }}
-        />
-      )}
-    />
-  );
-};
-
-/** Balance, adjust form and history for one member. */
-const MemberPointsPanel = ({ member, onAdjusted }: { member: Member; onAdjusted: (msg: string) => void }) => {
+/** Balance, adjust button and history for one member. */
+const MemberPointsPanel = ({
+  member,
+  refreshKey,
+  onAdjust,
+}: {
+  member: Member;
+  /** Changes after every adjustment so the balance and history reload. */
+  refreshKey: number;
+  onAdjust: () => void;
+}) => {
   const [balance, setBalance] = useState(member.points);
   const [items, setItems] = useState<PointTransaction[]>([]);
   const [total, setTotal] = useState(0);
@@ -164,13 +75,6 @@ const MemberPointsPanel = ({ member, onAdjusted }: { member: Member; onAdjusted:
   const [pageSize, setPageSize] = useState(10);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const [mode, setMode] = useState<'add' | 'remove'>('add');
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [submitError, setSubmitError] = useState('');
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -189,40 +93,7 @@ const MemberPointsPanel = ({ member, onAdjusted }: { member: Member; onAdjusted:
 
   useEffect(() => {
     load();
-  }, [load]);
-
-  const amountNum = Number(amount);
-  const amountValid = /^\d+$/.test(amount) && amountNum > 0 && amountNum <= MAX_POINT_DELTA;
-  const delta = mode === 'add' ? amountNum : -amountNum;
-  const balanceAfter = balance + delta;
-  let amountError = '';
-  if (amount !== '' && !amountValid) {
-    amountError = `กรุณาระบุจำนวนเต็ม 1 – ${formatPoints(MAX_POINT_DELTA)}`;
-  } else if (amountValid && balanceAfter < 0) {
-    amountError = `แต้มไม่พอ (คงเหลือ ${formatPoints(balance)} แต้ม)`;
-  }
-  const canSubmit = amountValid && !amountError && reason.length <= POINT_REASON_MAX_LENGTH;
-
-  const handleConfirm = async () => {
-    setBusy(true);
-    setSubmitError('');
-    try {
-      const result = await pointsService.adjust(member.id, delta, reason);
-      setBalance(result.balance);
-      setConfirmOpen(false);
-      setAmount('');
-      setReason('');
-      onAdjusted(
-        `${mode === 'add' ? 'เพิ่ม' : 'ลด'} ${formatPoints(amountNum)} แต้มแล้ว — คงเหลือ ${formatPoints(result.balance)} แต้ม`,
-      );
-      if (page === 0) load();
-      else setPage(0);
-    } catch (err) {
-      setSubmitError(toThaiPointsError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
+  }, [load, refreshKey]);
 
   return (
     <>
@@ -242,52 +113,9 @@ const MemberPointsPanel = ({ member, onAdjusted }: { member: Member; onAdjusted:
             </Typography>
           </Box>
 
-          <Box
-            component="form"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (canSubmit) {
-                setSubmitError('');
-                setConfirmOpen(true);
-              }
-            }}
-            sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1, maxWidth: 420 }}
-          >
-            <ToggleButtonGroup
-              exclusive
-              size="small"
-              value={mode}
-              onChange={(_, v: 'add' | 'remove' | null) => v && setMode(v)}
-            >
-              <ToggleButton value="add" color="success" sx={{ flex: 1 }}>
-                เพิ่มแต้ม
-              </ToggleButton>
-              <ToggleButton value="remove" color="error" sx={{ flex: 1 }}>
-                ลดแต้ม
-              </ToggleButton>
-            </ToggleButtonGroup>
-            <TextField
-              label="จำนวนแต้ม"
-              size="small"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ''))}
-              inputProps={{ inputMode: 'numeric' }}
-              error={!!amountError}
-              helperText={
-                amountError ||
-                (amountValid ? `คงเหลือหลังปรับ: ${formatPoints(balanceAfter)} แต้ม` : ' ')
-              }
-            />
-            <TextField
-              label="เหตุผล (ไม่บังคับ)"
-              size="small"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              inputProps={{ maxLength: POINT_REASON_MAX_LENGTH }}
-              helperText={`${reason.length}/${POINT_REASON_MAX_LENGTH}`}
-            />
-            <Button type="submit" variant="contained" color={mode === 'add' ? 'success' : 'error'} disabled={!canSubmit}>
-              {mode === 'add' ? 'เพิ่มแต้ม' : 'ลดแต้ม'}
+          <Box sx={{ display: 'flex', alignItems: 'center', alignSelf: 'center' }}>
+            <Button variant="outlined" size="large" startIcon={<ExposureIcon />} onClick={onAdjust}>
+              เพิ่ม/ลดแต้ม
             </Button>
           </Box>
         </Box>
@@ -355,43 +183,18 @@ const MemberPointsPanel = ({ member, onAdjusted }: { member: Member; onAdjusted:
         </Paper>
       )}
 
-      <Dialog open={confirmOpen} onClose={busy ? undefined : () => setConfirmOpen(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{mode === 'add' ? 'ยืนยันการเพิ่มแต้ม' : 'ยืนยันการลดแต้ม'}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {mode === 'add' ? 'เพิ่ม' : 'ลด'} <b>{formatPoints(amountNum)}</b> แต้ม {mode === 'add' ? 'ให้' : 'ของ'}{' '}
-            <b>{member.name}</b> ({member.phone})
-          </DialogContentText>
-          <DialogContentText sx={{ mt: 1 }}>
-            แต้มคงเหลือ: {formatPoints(balance)} → <b>{formatPoints(balanceAfter)}</b>
-          </DialogContentText>
-          {reason.trim() && <DialogContentText sx={{ mt: 1 }}>เหตุผล: {reason.trim()}</DialogContentText>}
-          {submitError && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-              {submitError}
-            </Alert>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmOpen(false)} disabled={busy}>
-            ยกเลิก
-          </Button>
-          <Button
-            variant="contained"
-            color={mode === 'add' ? 'success' : 'error'}
-            onClick={handleConfirm}
-            disabled={busy}
-          >
-            {busy ? <CircularProgress size={20} /> : 'ยืนยัน'}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </>
   );
 };
 
 /** Recent adjustments across all members, shown when no member is selected. */
-const RecentAdjustments = ({ onSelectMember }: { onSelectMember: (memberId: string) => void }) => {
+const RecentAdjustments = ({
+  onSelectMember,
+  refreshKey,
+}: {
+  onSelectMember: (memberId: string) => void;
+  refreshKey: number;
+}) => {
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounced(search);
   const [items, setItems] = useState<PointTransaction[]>([]);
@@ -417,7 +220,7 @@ const RecentAdjustments = ({ onSelectMember }: { onSelectMember: (memberId: stri
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshKey]);
 
   return (
     <>
@@ -559,6 +362,20 @@ const PointsPage = () => {
   const [member, setMember] = useState<Member | null>(null);
   const [memberError, setMemberError] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleAdjusted = (target: Member, result: AdjustPointsResult) => {
+    const delta = result.transaction.delta;
+    setAdjustOpen(false);
+    setToast(
+      `${delta > 0 ? 'เพิ่ม' : 'ลด'} ${formatPoints(Math.abs(delta))} แต้มให้ ${target.name} แล้ว — คงเหลือ ${formatPoints(result.balance)} แต้ม`,
+    );
+    // Show the member that was just adjusted, with the new balance
+    setMember({ ...target, points: result.balance });
+    if (memberId !== target.id) selectMember(target.id);
+    setRefreshKey((k) => k + 1);
+  };
 
   const selectMember = (id: string | null) => {
     setSearchParams(id ? { memberId: id } : {});
@@ -590,9 +407,14 @@ const PointsPage = () => {
   return (
     <Layout>
       <Box sx={{ p: { xs: 1.5, md: 2 } }}>
-        <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-          แต้มสะสม
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+          <Typography variant="h4" component="h1">
+            แต้มสะสม
+          </Typography>
+          <Button variant="contained" size="large" startIcon={<ExposureIcon />} onClick={() => setAdjustOpen(true)}>
+            เพิ่ม/ลดแต้ม
+          </Button>
+        </Box>
 
         <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <MemberPicker value={member} onChange={(m) => selectMember(m?.id ?? null)} />
@@ -608,9 +430,14 @@ const PointsPage = () => {
         )}
 
         {memberId && member?.id === memberId ? (
-          <MemberPointsPanel key={member.id} member={member} onAdjusted={setToast} />
+          <MemberPointsPanel
+            key={member.id}
+            member={member}
+            refreshKey={refreshKey}
+            onAdjust={() => setAdjustOpen(true)}
+          />
         ) : !memberId ? (
-          <RecentAdjustments onSelectMember={selectMember} />
+          <RecentAdjustments onSelectMember={selectMember} refreshKey={refreshKey} />
         ) : (
           !memberError && (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -618,6 +445,13 @@ const PointsPage = () => {
             </Box>
           )
         )}
+
+        <AdjustPointsDialog
+          open={adjustOpen}
+          onClose={() => setAdjustOpen(false)}
+          initialMember={memberId && member?.id === memberId ? member : null}
+          onDone={handleAdjusted}
+        />
 
         <Snackbar
           open={!!toast}
