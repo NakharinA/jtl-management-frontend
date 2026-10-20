@@ -35,9 +35,19 @@ import { Consumer, PaymentMethod } from '@/modules/pos/types';
 import { orderService } from '@/modules/pos/services/order.service';
 import { isApiError } from '@/services/api.client';
 
+// Viewport height minus the AppBar and the Layout's vertical padding (24px x 2).
+// dvh where supported so iPad/phone browser bars don't push the page into scroll.
+const fullHeight = (toolbar: number) => ({
+  height: `calc(100vh - ${toolbar + 48}px)`,
+  '@supports (height: 100dvh)': { height: `calc(100dvh - ${toolbar + 48}px)` },
+});
+
 const POSSalesPage = () => {
   const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  // Two-column layout (products + cart side by side) from iPad portrait up
+  // (768px); the tab layout is for phones only. noSsr: no flash of the wrong
+  // layout on first render.
+  const isDesktop = useMediaQuery('(min-width:768px)', { noSsr: true });
   const [mobileTab, setMobileTab] = useState(0); // 0 = products, 1 = cart
 
   // Consumer state for controlled-product checkout
@@ -179,6 +189,7 @@ const POSSalesPage = () => {
         flexDirection: 'column',
         gap: 1.5,
         height: '100%',
+        minWidth: 0,
         overflow: 'hidden',
       }}
     >
@@ -188,7 +199,7 @@ const POSSalesPage = () => {
         selected={selectedCategory}
         onSelect={setSelectedCategory}
       />
-      <Box sx={{ flex: 1, overflowY: 'auto', pr: 0.5 }}>
+      <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', pr: 0.5, pt: 0.5 }}>
         <ProductGrid
           products={filteredProducts}
           isLoading={productsLoading}
@@ -215,7 +226,7 @@ const POSSalesPage = () => {
       }}
     >
       {/* Cart header */}
-      <Box sx={{ px: 2, pt: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ px: 2, pt: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider', flexShrink: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <Typography variant="h6" fontWeight={700}>
             ตะกร้าสินค้า
@@ -338,16 +349,24 @@ const POSSalesPage = () => {
           sx={{
             display: 'flex',
             gap: 2,
-            height: 'calc(100vh - 64px - 48px)', // AppBar + Layout padding
+            ...fullHeight(64), // AppBar is 64px from 600px up
             overflow: 'hidden',
           }}
         >
-          {/* Left: products 65% */}
-          <Box sx={{ flex: '0 0 65%', maxWidth: '65%', display: 'flex', flexDirection: 'column' }}>
+          {/* Left: products, takes the remaining width */}
+          <Box sx={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
             {productPanel}
           </Box>
-          {/* Right: cart 35% */}
-          <Box sx={{ flex: '0 0 35%', maxWidth: '35%', display: 'flex', flexDirection: 'column' }}>
+          {/* Right: cart, fixed width so its rows and buttons never get squeezed */}
+          <Box
+            sx={{
+              flex: '0 0 auto',
+              width: { xs: 340, lg: 380 },
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             {cartPanel}
           </Box>
         </Box>
@@ -376,7 +395,10 @@ const POSSalesPage = () => {
         sx={{
           display: 'flex',
           flexDirection: 'column',
-          height: 'calc(100vh - 64px - 48px)',
+          ...fullHeight(56),
+          // MUI's AppBar is 48px on phones in landscape, 56px in portrait
+          [`${theme.breakpoints.up('xs')} and (orientation: landscape)`]: fullHeight(48),
+          [theme.breakpoints.up('sm')]: fullHeight(64),
           overflow: 'hidden',
         }}
       >

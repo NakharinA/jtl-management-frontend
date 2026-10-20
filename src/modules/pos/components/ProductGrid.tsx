@@ -1,4 +1,4 @@
-import { Box, CircularProgress, Grid, Typography } from '@mui/material';
+import { Box, CircularProgress, Typography } from '@mui/material';
 import SearchOffIcon from '@mui/icons-material/SearchOff';
 import { Product } from '../../product/types';
 import { POSProductCard } from './POSProductCard';
@@ -28,17 +28,30 @@ export const ProductGrid = ({ products, isLoading, onAddToCart, disabled }: Prop
     );
   }
 
+  // Columns follow the panel width (not the viewport), so the grid stays tidy
+  // whether the cart sits beside it, the nav drawer is open, or on a phone.
   return (
-    <Grid container spacing={1.5} sx={{ alignContent: 'flex-start' }}>
+    <Box
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: 'repeat(auto-fill, minmax(140px, 1fr))',
+          sm: 'repeat(auto-fill, minmax(150px, 1fr))',
+          xl: 'repeat(auto-fill, minmax(170px, 1fr))',
+        },
+        gap: 1.5,
+        alignContent: 'flex-start',
+        pb: 0.5,
+      }}
+    >
       {products.map((product) => (
-        <Grid item xs={6} sm={4} md={3} key={product.id}>
-          <POSProductCard
-            product={product}
-            onAddToCart={onAddToCart}
-            disabled={disabled}
-          />
-        </Grid>
+        <POSProductCard
+          key={product.id}
+          product={product}
+          onAddToCart={onAddToCart}
+          disabled={disabled}
+        />
       ))}
-    </Grid>
+    </Box>
   );
 };

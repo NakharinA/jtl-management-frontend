@@ -45,10 +45,14 @@ export const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
   const { logout } = useAuth();
   const theme = useTheme();
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  // noSsr: read the real value on the first render, so the drawer does not
+  // start open over the page on tablets/phones.
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'), { noSsr: true });
   
   // State for sidebar
-  const [open, setOpen] = useState(true);
+  // Open by default on desktop (persistent drawer); closed on smaller screens
+  // where the drawer is a temporary overlay.
+  const [open, setOpen] = useState(isDesktop);
 
   // Auto-collapse on mobile initially or if preferred
   // Effect to handle responsiveness could be added, but simple initialized state is okay.
@@ -154,6 +158,9 @@ export const Layout = ({ children }: LayoutProps) => {
         component="main"
         sx={{
           flexGrow: 1,
+          // Flex items default to min-width:auto, which lets wide content (e.g. a
+          // horizontally scrolling chip row) stretch <main> past the viewport.
+          minWidth: 0,
           p: 3,
           backgroundColor: '#f5f5f5',
           minHeight: '100vh',

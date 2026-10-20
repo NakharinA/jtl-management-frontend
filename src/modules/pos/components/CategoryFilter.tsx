@@ -11,8 +11,16 @@ export const CategoryFilter = ({ categories, selected, onSelect }: Props) => (
     sx={{
       display: 'flex',
       gap: 1,
+      // Scroll the chips inside this row; width 0 + minWidth 100% keeps the
+      // chips' combined width from widening the page (min-content = 0).
+      width: 0,
+      minWidth: '100%',
+      flexShrink: 0,
       overflowX: 'auto',
+      overflowY: 'hidden',
       pb: 0.5,
+      WebkitOverflowScrolling: 'touch',
+      '& .MuiChip-root': { '@media (pointer: coarse)': { height: 36 } },
       '&::-webkit-scrollbar': { height: 4 },
       '&::-webkit-scrollbar-thumb': {
         bgcolor: 'grey.300',

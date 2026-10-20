@@ -5,7 +5,7 @@ interface Props {
 }
 
 export const OrderSummary = ({ subtotal }: Props) => (
-  <Box sx={{ px: 2, pt: 1.5, pb: 1 }}>
+  <Box sx={{ px: 2, pt: 1.5, pb: 1, flexShrink: 0 }}>
     <Divider sx={{ mb: 1.5 }} />
     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
       <Typography variant="body2" color="text.secondary">

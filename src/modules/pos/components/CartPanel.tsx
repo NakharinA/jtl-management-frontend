@@ -16,6 +16,7 @@ export const CartPanel = ({ items, onUpdateQuantity, onRemove, disabled }: Props
       <Box
         sx={{
           flex: 1,
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -31,7 +32,9 @@ export const CartPanel = ({ items, onUpdateQuantity, onRemove, disabled }: Props
   }
 
   return (
-    <Box sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
+    // minHeight 0: lets the list shrink and scroll so the totals and
+    // checkout buttons below it always stay on screen.
+    <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 1.5 }}>
       {items.map((item) => (
         <CartItemRow
           key={item.productId}
