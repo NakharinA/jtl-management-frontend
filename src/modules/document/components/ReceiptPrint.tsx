@@ -67,14 +67,6 @@ export const ReceiptPrint = ({ doc }: { doc: SalesDocument }) => {
           <span>-{formatMoney(doc.discount)}</span>
         </div>
       )}
-      {doc.vat > 0 && (
-        <div className="row">
-          <span>
-            VAT {Math.round(doc.vatRate * 100)}%{doc.vatInclusive ? ' (รวมในราคาแล้ว)' : ''}
-          </span>
-          <span>{formatMoney(doc.vat)}</span>
-        </div>
-      )}
       <div className="row total">
         <span>ยอดสุทธิ</span>
         <span>{formatMoney(doc.total)}</span>

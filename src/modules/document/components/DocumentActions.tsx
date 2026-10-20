@@ -4,20 +4,20 @@ import PrintIcon from '@mui/icons-material/Print';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { useOrderDocuments } from '../hooks/useOrderDocuments';
 import { openPrintWindow } from '../services/document.service';
-import { TaxInvoiceRequestDialog } from './TaxInvoiceRequestDialog';
+import { DeliveryNoteRequestDialog } from './DeliveryNoteRequestDialog';
 
 interface Props {
   /** Paid order; its default document is issued automatically. */
   orderId: string | null;
 }
 
-/** Print buttons for an order's receipt / tax invoice (+ request a tax invoice). */
+/** Print buttons for an order's receipt / delivery note (+ request a delivery note). */
 export const DocumentActions = ({ orderId }: Props) => {
-  const { documents, isLoading, error, requestTaxInvoice } = useOrderDocuments(orderId);
+  const { documents, isLoading, error, requestDeliveryNote } = useOrderDocuments(orderId);
   const [requestOpen, setRequestOpen] = useState(false);
 
   const receipt = documents.find((d) => d.type === 'receipt');
-  const taxInvoice = documents.find((d) => d.type === 'tax_invoice');
+  const deliveryNote = documents.find((d) => d.type === 'delivery_note');
 
   if (isLoading) {
     return (
@@ -46,29 +46,29 @@ export const DocumentActions = ({ orderId }: Props) => {
           พิมพ์ใบเสร็จ ({receipt.documentNo})
         </Button>
       )}
-      {taxInvoice && (
+      {deliveryNote && (
         <Button
           variant="outlined"
           startIcon={<PrintIcon />}
-          onClick={() => openPrintWindow(taxInvoice.id)}
+          onClick={() => openPrintWindow(deliveryNote.id)}
         >
-          พิมพ์ใบกำกับภาษี ({taxInvoice.documentNo})
+          พิมพ์ใบส่งของ ({deliveryNote.documentNo})
         </Button>
       )}
-      {!taxInvoice && documents.length > 0 && (
+      {!deliveryNote && documents.length > 0 && (
         <Button
           variant="text"
           size="small"
           startIcon={<ReceiptLongIcon />}
           onClick={() => setRequestOpen(true)}
         >
-          ขอใบกำกับภาษี
+          ขอใบส่งของ
         </Button>
       )}
-      <TaxInvoiceRequestDialog
+      <DeliveryNoteRequestDialog
         open={requestOpen}
         onClose={() => setRequestOpen(false)}
-        onSubmit={requestTaxInvoice}
+        onSubmit={requestDeliveryNote}
       />
     </Box>
   );

@@ -4,10 +4,8 @@ import {
   Box,
   Button,
   CircularProgress,
-  FormControlLabel,
   Paper,
   Stack,
-  Switch,
   TextField,
   Typography,
 } from '@mui/material';
@@ -22,10 +20,9 @@ const EMPTY: ShopProfileInput = {
   branch: '',
   address: '',
   phone: '',
-  vatRegistered: false,
 };
 
-/** Seller details printed on receipts and tax invoices. */
+/** Seller details printed on receipts and delivery notes. The shop is not VAT-registered. */
 const ShopProfilePage = () => {
   const [form, setForm] = useState<ShopProfileInput>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,7 +40,6 @@ const ShopProfilePage = () => {
           branch: p.branch ?? '',
           address: p.address ?? '',
           phone: p.phone ?? '',
-          vatRegistered: p.vatRegistered,
         }),
       )
       .catch((err: unknown) =>
@@ -53,7 +49,7 @@ const ShopProfilePage = () => {
   }, []);
 
   const set =
-    (key: Exclude<keyof ShopProfileInput, 'vatRegistered'>) =>
+    (key: keyof ShopProfileInput) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
       setSaved(false);
@@ -82,7 +78,7 @@ const ShopProfilePage = () => {
           ข้อมูลร้าน
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          ใช้แสดงบนใบเสร็จและใบกำกับภาษี
+          ใช้แสดงบนใบเสร็จรับเงินและใบส่งของ
         </Typography>
 
         {isLoading ? (
@@ -94,18 +90,18 @@ const ShopProfilePage = () => {
               {saved && <Alert severity="success">บันทึกแล้ว</Alert>}
               <TextField label="ชื่อร้าน / บริษัท" value={form.name} onChange={set('name')} required />
               <TextField
-                label="เลขประจำตัวผู้เสียภาษี (13 หลัก)"
+                label="เลขประจำตัวผู้เสียภาษี (ถ้ามี)"
                 value={form.taxId}
                 onChange={set('taxId')}
                 error={taxIdInvalid}
-                helperText={taxIdInvalid ? 'ต้องเป็นตัวเลข 13 หลัก' : 'จำเป็นสำหรับการออกใบกำกับภาษี'}
+                helperText={taxIdInvalid ? 'ต้องเป็นตัวเลข 13 หลัก' : 'ไม่บังคับ — ถ้ากรอกต้องเป็นตัวเลข 13 หลัก'}
                 inputProps={{ inputMode: 'numeric' }}
               />
               <TextField
                 label="สาขา"
                 value={form.branch}
                 onChange={set('branch')}
-                helperText="เช่น สำนักงานใหญ่ หรือ 00001 (เว้นว่าง = สำนักงานใหญ่)"
+                helperText="ใช้เมื่อมีเลขผู้เสียภาษี เช่น สำนักงานใหญ่ หรือ 00001"
               />
               <TextField
                 label="ที่อยู่"
@@ -115,18 +111,6 @@ const ShopProfilePage = () => {
                 minRows={2}
               />
               <TextField label="เบอร์โทร" value={form.phone} onChange={set('phone')} />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={form.vatRegistered}
-                    onChange={(e) => {
-                      setForm((prev) => ({ ...prev, vatRegistered: e.target.checked }));
-                      setSaved(false);
-                    }}
-                  />
-                }
-                label="จดทะเบียนภาษีมูลค่าเพิ่ม (VAT) — จำเป็นสำหรับการออกใบกำกับภาษี"
-              />
               <Box>
                 <Button
                   variant="contained"

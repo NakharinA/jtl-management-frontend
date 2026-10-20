@@ -18,10 +18,18 @@ interface Props {
   onSubmit: (buyer: BuyerInput) => Promise<unknown>;
 }
 
-const EMPTY: BuyerInput = { name: '', taxId: '', branch: 'สำนักงานใหญ่', address: '' };
+interface BuyerForm {
+  name: string;
+  taxId: string;
+  branch: string;
+  address: string;
+}
 
-export const TaxInvoiceRequestDialog = ({ open, onClose, onSubmit }: Props) => {
-  const [form, setForm] = useState<BuyerInput>(EMPTY);
+const EMPTY: BuyerForm = { name: '', taxId: '', branch: '', address: '' };
+
+/** Buyer details for a delivery note (ใบส่งของ/ใบเสร็จรับเงิน) for a walk-in / person customer. */
+export const DeliveryNoteRequestDialog = ({ open, onClose, onSubmit }: Props) => {
+  const [form, setForm] = useState<BuyerForm>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +42,11 @@ export const TaxInvoiceRequestDialog = ({ open, onClose, onSubmit }: Props) => {
 
   const taxIdDigits = form.taxId.replace(/[\s-]/g, '');
   const taxIdInvalid = form.taxId !== '' && !/^\d{13}$/.test(taxIdDigits);
-  const canSubmit =
-    form.name.trim() !== '' && /^\d{13}$/.test(taxIdDigits) && form.address.trim() !== '';
+  // Tax ID and address are optional; only the buyer name is required
+  const canSubmit = form.name.trim() !== '' && !taxIdInvalid;
 
   const set =
-    (key: keyof BuyerInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    (key: keyof BuyerForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   const handleSubmit = async () => {
@@ -47,13 +55,14 @@ export const TaxInvoiceRequestDialog = ({ open, onClose, onSubmit }: Props) => {
     try {
       await onSubmit({
         name: form.name.trim(),
-        taxId: taxIdDigits,
-        branch: form.branch?.trim() || undefined,
-        address: form.address.trim(),
+        taxId: taxIdDigits || undefined,
+        // A branch only means something alongside a tax ID
+        branch: taxIdDigits ? form.branch.trim() || 'สำนักงานใหญ่' : undefined,
+        address: form.address.trim() || undefined,
       });
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'ออกใบกำกับภาษีไม่สำเร็จ');
+      setError(err instanceof Error ? err.message : 'ออกใบส่งของไม่สำเร็จ');
     } finally {
       setSubmitting(false);
     }
@@ -61,37 +70,38 @@ export const TaxInvoiceRequestDialog = ({ open, onClose, onSubmit }: Props) => {
 
   return (
     <Dialog open={open} onClose={submitting ? undefined : onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>ขอใบกำกับภาษี</DialogTitle>
+      <DialogTitle>ขอใบส่งของ / ใบเสร็จรับเงิน</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ pt: 1 }}>
           {error && <Alert severity="error">{error}</Alert>}
           <TextField
-            label="ชื่อผู้ซื้อ / บริษัท"
+            label="ชื่อผู้ซื้อ / ร้าน / บริษัท"
             value={form.name}
             onChange={set('name')}
             required
             autoFocus
           />
           <TextField
-            label="เลขประจำตัวผู้เสียภาษี (13 หลัก)"
+            label="เลขประจำตัวผู้เสียภาษี (ถ้ามี)"
             value={form.taxId}
             onChange={set('taxId')}
-            required
             error={taxIdInvalid}
-            helperText={taxIdInvalid ? 'ต้องเป็นตัวเลข 13 หลัก' : ' '}
+            helperText={taxIdInvalid ? 'ต้องเป็นตัวเลข 13 หลัก' : 'ไม่บังคับ — ถ้ากรอกต้องเป็นตัวเลข 13 หลัก'}
             inputProps={{ inputMode: 'numeric' }}
           />
           <TextField
             label="สาขา"
             value={form.branch}
             onChange={set('branch')}
-            helperText="เช่น สำนักงานใหญ่ หรือ 00001"
+            disabled={!taxIdDigits}
+            placeholder="สำนักงานใหญ่"
+            helperText="ใช้เมื่อมีเลขผู้เสียภาษี เช่น สำนักงานใหญ่ หรือ 00001"
           />
           <TextField
             label="ที่อยู่"
             value={form.address}
             onChange={set('address')}
-            required
+            helperText="แนะนำให้กรอก (ไม่บังคับ)"
             multiline
             minRows={2}
           />
@@ -107,7 +117,7 @@ export const TaxInvoiceRequestDialog = ({ open, onClose, onSubmit }: Props) => {
           disabled={!canSubmit || submitting}
           startIcon={submitting ? <CircularProgress size={16} /> : undefined}
         >
-          ออกใบกำกับภาษี
+          ออกใบส่งของ
         </Button>
       </DialogActions>
     </Dialog>

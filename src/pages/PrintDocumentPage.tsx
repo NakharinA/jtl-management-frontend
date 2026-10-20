@@ -5,9 +5,9 @@ import PrintIcon from '@mui/icons-material/Print';
 import { documentService } from '@/modules/document/services/document.service';
 import { SalesDocument } from '@/modules/document/types';
 import { ReceiptPrint } from '@/modules/document/components/ReceiptPrint';
-import { TaxInvoicePrint } from '@/modules/document/components/TaxInvoicePrint';
+import { DeliveryNotePrint } from '@/modules/document/components/DeliveryNotePrint';
 
-/** Printable receipt / tax invoice, opened in its own window. */
+/** Printable receipt / delivery note, opened in its own window. */
 const PrintDocumentPage = () => {
   const { id } = useParams<{ id: string }>();
   const [doc, setDoc] = useState<SalesDocument | null>(null);
@@ -66,7 +66,7 @@ const PrintDocumentPage = () => {
           ปิด
         </Button>
       </Box>
-      {doc.type === 'tax_invoice' ? <TaxInvoicePrint doc={doc} /> : <ReceiptPrint doc={doc} />}
+      {doc.type === 'delivery_note' ? <DeliveryNotePrint doc={doc} /> : <ReceiptPrint doc={doc} />}
     </Box>
   );
 };

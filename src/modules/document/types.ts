@@ -1,6 +1,6 @@
 import { PaymentMethod } from '../pos/types';
 
-export type DocumentType = 'receipt' | 'tax_invoice';
+export type DocumentType = 'receipt' | 'delivery_note';
 
 export interface ShopProfile {
   name: string;
@@ -8,7 +8,6 @@ export interface ShopProfile {
   branch: string | null;
   address: string | null;
   phone: string | null;
-  vatRegistered: boolean;
   configured: boolean;
   updatedAt: string | null;
 }
@@ -19,14 +18,25 @@ export interface ShopProfileInput {
   branch?: string | null;
   address?: string | null;
   phone?: string | null;
-  vatRegistered: boolean;
 }
 
 export interface BuyerInput {
   name: string;
-  taxId: string;
+  /** Optional; 13 digits when given */
+  taxId?: string;
   branch?: string;
-  address: string;
+  address?: string;
+}
+
+/** Seller details as printed: snapshot taken at issue time (or the current profile for older documents). */
+export interface DocumentSeller {
+  name: string;
+  taxId: string | null;
+  branch: string | null;
+  address: string | null;
+  phone: string | null;
+  /** false when the document predates seller snapshots */
+  snapshot: boolean;
 }
 
 export interface SalesDocumentItem {
@@ -44,7 +54,7 @@ export interface SalesDocument {
   issuedAt: string;
   orderId: string;
   memberId: string | null;
-  seller: ShopProfile;
+  seller: DocumentSeller;
   buyer: {
     name: string | null;
     taxId: string | null;
@@ -53,11 +63,6 @@ export interface SalesDocument {
   };
   subtotal: number;
   discount: number;
-  vat: number;
-  vatRate: number;
-  /** VAT was extracted from VAT-inclusive prices */
-  vatInclusive: boolean;
-  amountBeforeVat: number;
   total: number;
   items: SalesDocumentItem[];
   order: {
@@ -85,5 +90,5 @@ export interface SalesDocument {
 
 export const DOCUMENT_LABELS: Record<DocumentType, string> = {
   receipt: 'ใบเสร็จรับเงิน',
-  tax_invoice: 'ใบกำกับภาษี',
+  delivery_note: 'ใบส่งของ / ใบเสร็จรับเงิน',
 };
