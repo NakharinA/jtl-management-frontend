@@ -17,6 +17,7 @@ import {
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import BlockIcon from '@mui/icons-material/Block';
+import LoyaltyIcon from '@mui/icons-material/Loyalty';
 import { PaymentMethod, PaymentResponse } from '../types';
 import { CheckoutStep } from '../hooks/useCheckout';
 import { DocumentActions } from '../../document/components/DocumentActions';
@@ -181,6 +182,11 @@ export const CheckoutDialog = ({
             <Typography variant="h6" fontWeight={700} color="success.main">
               ขายสำเร็จ
             </Typography>
+            {(paymentResult.pointsEarned ?? 0) > 0 && (
+              <Alert icon={<LoyaltyIcon fontSize="inherit" />} severity="success" sx={{ width: '100%' }}>
+                ได้รับ {paymentResult.pointsEarned!.toLocaleString('th-TH')} แต้ม
+              </Alert>
+            )}
             <Divider sx={{ width: '100%', my: 1 }} />
             <Box sx={{ width: '100%' }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>

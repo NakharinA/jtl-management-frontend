@@ -94,4 +94,6 @@ export interface PaymentResponse {
   change?: number;
   referenceNumber?: string;
   processedAt: string;
+  /** Purchase points awarded to the member for this order (0 or absent if none). */
+  pointsEarned?: number;
 }
