@@ -1,13 +1,15 @@
 import { useState, useCallback } from 'react';
-import { PaymentMethod, PaymentResponse, ProcessPaymentRequest } from '../types';
+import { Order, PaymentMethod, PaymentResponse, ProcessPaymentRequest } from '../types';
 import { orderService } from '../services/order.service';
 import { paymentService } from '../services/payment.service';
+import { isApiError } from '../../../services/api.client';
 
 export type CheckoutStep =
   | 'IDLE'
   | 'PAYMENT_FORM'
   | 'PROCESSING'
   | 'SUCCESS'
+  | 'BLOCKED' // 409 repurchase period — order exists but cannot be paid
   | 'ERROR';
 
 export interface CheckoutState {
@@ -15,58 +17,83 @@ export interface CheckoutState {
   paymentMethod: PaymentMethod | null;
   paymentResult: PaymentResponse | null;
   errorMessage: string | null;
+  /**
+   * Order created on the server (server cart already deleted) but not yet paid.
+   * Retrying payment re-uses it instead of creating a second order.
+   */
+  pendingOrder: Order | null;
 }
+
+interface CheckoutOptions {
+  /** Called when POST /pos/orders rejects with 400 because consumerId is missing. */
+  onConsumerRequired?: (method: PaymentMethod, message: string) => void;
+}
+
+const IDLE_STATE: CheckoutState = {
+  step: 'IDLE',
+  paymentMethod: null,
+  paymentResult: null,
+  errorMessage: null,
+  pendingOrder: null,
+};
+
+const isConsumerRequiredError = (err: unknown) =>
+  isApiError(err, 400) && /consumer/i.test(err.message);
+
+const isRepurchaseBlockedError = (err: unknown) =>
+  isApiError(err, 409) && /repurchase/i.test(err.message);
 
 export const useCheckout = (
   cartId: string | null,
   clearCart: () => void,
   consumerId: string | null = null,
+  options: CheckoutOptions = {},
 ) => {
-  const [state, setState] = useState<CheckoutState>({
-    step: 'IDLE',
-    paymentMethod: null,
-    paymentResult: null,
-    errorMessage: null,
-  });
+  const { onConsumerRequired } = options;
+  const [state, setState] = useState<CheckoutState>(IDLE_STATE);
 
   const openCheckout = useCallback((method: PaymentMethod) => {
-    setState({
-      step: 'PAYMENT_FORM',
-      paymentMethod: method,
-      paymentResult: null,
-      errorMessage: null,
-    });
-  }, []);
-
-  const cancelCheckout = useCallback(() => {
-    setState({
-      step: 'IDLE',
-      paymentMethod: null,
-      paymentResult: null,
-      errorMessage: null,
-    });
+    setState({ ...IDLE_STATE, step: 'PAYMENT_FORM', paymentMethod: method });
   }, []);
 
   const confirmCheckout = useCallback(
     async (paymentDetails: Omit<ProcessPaymentRequest, 'method'>) => {
-      if (!cartId || !state.paymentMethod) return;
+      const method = state.paymentMethod;
+      if (!method || (!cartId && !state.pendingOrder)) return;
 
       setState((prev) => ({ ...prev, step: 'PROCESSING' }));
 
-      try {
-        // Step 1: Confirm order (locks prices, deletes cart on server)
-        const order = await orderService.confirmOrder(cartId, 0, 0, consumerId ?? undefined);
+      // Step 1: Confirm order (locks prices, deletes cart on server).
+      // Skipped when a previous attempt already created the order.
+      let order = state.pendingOrder;
+      if (!order) {
+        try {
+          order = await orderService.confirmOrder(cartId!, 0, 0, consumerId ?? undefined);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างออเดอร์';
+          if (isConsumerRequiredError(err) && onConsumerRequired) {
+            setState(IDLE_STATE);
+            onConsumerRequired(method, msg);
+            return;
+          }
+          setState((prev) => ({ ...prev, step: 'ERROR', errorMessage: msg }));
+          return;
+        }
+        const created = order;
+        setState((prev) => ({ ...prev, pendingOrder: created }));
+      }
 
-        // Step 2: Process payment
+      // Step 2: Process payment
+      try {
         const body: ProcessPaymentRequest =
-          state.paymentMethod === 'cash'
+          method === 'cash'
             ? {
                 method: 'cash',
                 amountTendered: (paymentDetails as { amountTendered: number })
                   .amountTendered,
               }
             : {
-                method: state.paymentMethod as 'qr' | 'card',
+                method,
                 referenceNumber: (
                   paymentDetails as { referenceNumber: string }
                 ).referenceNumber,
@@ -78,20 +105,23 @@ export const useCheckout = (
 
         setState({
           step: 'SUCCESS',
-          paymentMethod: state.paymentMethod,
+          paymentMethod: method,
           paymentResult: result,
           errorMessage: null,
+          pendingOrder: null,
         });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการชำระเงิน';
+        const unpaid = order;
         setState((prev) => ({
           ...prev,
-          step: 'ERROR',
+          step: isRepurchaseBlockedError(err) ? 'BLOCKED' : 'ERROR',
           errorMessage: msg,
+          pendingOrder: unpaid,
         }));
       }
     },
-    [cartId, state.paymentMethod, clearCart],
+    [cartId, consumerId, state.paymentMethod, state.pendingOrder, clearCart, onConsumerRequired],
   );
 
   const retryCheckout = useCallback(() => {
@@ -103,19 +133,15 @@ export const useCheckout = (
     }));
   }, []);
 
+  /** Resets the dialog. Callers must handle `pendingOrder` (see POSSalesPage). */
   const closeCheckout = useCallback(() => {
-    setState({
-      step: 'IDLE',
-      paymentMethod: null,
-      paymentResult: null,
-      errorMessage: null,
-    });
+    setState(IDLE_STATE);
   }, []);
 
   return {
     ...state,
     openCheckout,
-    cancelCheckout,
+    cancelCheckout: closeCheckout,
     confirmCheckout,
     retryCheckout,
     closeCheckout,

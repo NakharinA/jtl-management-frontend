@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
+  Alert,
+  AlertTitle,
   Box,
   Button,
   CircularProgress,
@@ -14,6 +16,7 @@ import {
 } from '@mui/material';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import BlockIcon from '@mui/icons-material/Block';
 import { PaymentMethod, PaymentResponse } from '../types';
 import { CheckoutStep } from '../hooks/useCheckout';
 
@@ -27,6 +30,8 @@ interface Props {
   onConfirm: (details: { amountTendered?: number; referenceNumber?: string }) => void;
   onRetry: () => void;
   onClose: () => void;
+  /** BLOCKED step: abandon the unpaid order and clear the cart. */
+  onCancelOrder: () => void;
 }
 
 const METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -52,6 +57,7 @@ export const CheckoutDialog = ({
   onConfirm,
   onRetry,
   onClose,
+  onCancelOrder,
 }: Props) => {
   const [amountTendered, setAmountTendered] = useState(subtotal);
   const [referenceNumber, setReferenceNumber] = useState('');
@@ -88,6 +94,8 @@ export const CheckoutDialog = ({
   const dialogTitle =
     step === 'SUCCESS'
       ? 'ขายสำเร็จ'
+      : step === 'BLOCKED'
+        ? 'ไม่สามารถซื้อได้ (Purchase blocked)'
       : step === 'ERROR'
         ? 'เกิดข้อผิดพลาด'
         : step === 'PROCESSING'
@@ -99,7 +107,7 @@ export const CheckoutDialog = ({
   return (
     <Dialog
       open={open}
-      onClose={step === 'SUCCESS' || step === 'ERROR' ? onClose : undefined}
+      onClose={step === 'SUCCESS' || step === 'ERROR' || step === 'BLOCKED' ? onClose : undefined}
       maxWidth="xs"
       fullWidth
       disableEscapeKeyDown={step === 'PROCESSING'}
@@ -208,6 +216,21 @@ export const CheckoutDialog = ({
           </Box>
         )}
 
+        {/* BLOCKED (409 repurchase period) */}
+        {step === 'BLOCKED' && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2, gap: 1.5 }}>
+            <BlockIcon sx={{ fontSize: 64, color: 'warning.main' }} />
+            <Alert severity="warning" sx={{ width: '100%' }}>
+              <AlertTitle>ไม่สามารถซื้อได้ (Purchase blocked)</AlertTitle>
+              {errorMessage}
+            </Alert>
+            <Typography variant="body2" color="text.secondary" textAlign="center">
+              ออเดอร์นี้ยังไม่ได้ชำระเงิน — ยกเลิกออเดอร์เพื่อล้างตะกร้า
+              หรือปิดเพื่อกลับไปแก้ไขสินค้าในตะกร้า
+            </Typography>
+          </Box>
+        )}
+
         {/* ERROR */}
         {step === 'ERROR' && (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 2, gap: 1.5 }}>
@@ -234,6 +257,16 @@ export const CheckoutDialog = ({
           <Button variant="contained" color="success" fullWidth onClick={onClose}>
             ปิด
           </Button>
+        )}
+        {step === 'BLOCKED' && (
+          <>
+            <Button onClick={onCancelOrder} color="error">
+              ยกเลิกออเดอร์
+            </Button>
+            <Button variant="contained" onClick={onClose}>
+              ปิด
+            </Button>
+          </>
         )}
         {step === 'ERROR' && (
           <>

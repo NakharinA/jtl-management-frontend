@@ -1,5 +1,19 @@
 const BASE_URL = import.meta.env.VITE_BASE_URL || "http://localhost:3000";
 
+/** Error thrown for non-2xx responses; carries the HTTP status. */
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export const isApiError = (err: unknown, status?: number): err is ApiError =>
+  err instanceof ApiError && (status === undefined || err.status === status);
+
 export const apiClient = {
   get: async <T>(url: string, params?: Record<string, string>): Promise<T> => {
     const query = params ? `?${new URLSearchParams(params)}` : "";
@@ -64,13 +78,19 @@ const handleResponse = async (response: Response) => {
     localStorage.removeItem("token");
     localStorage.removeItem("auth_user");
     window.location.href = "/login";
-    throw new Error("Session expired. Please log in again.");
+    throw new ApiError("Session expired. Please log in again.", 401);
   }
   if (!response.ok) {
     const error = await response
       .json()
       .catch(() => ({ message: "Unknown error" }));
-    throw new Error(error.message || `API Error: ${response.statusText}`);
+    const message = Array.isArray(error.message)
+      ? error.message.join(", ")
+      : error.message;
+    throw new ApiError(
+      message || `API Error: ${response.statusText}`,
+      response.status,
+    );
   }
   return response.json();
 };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Alert,
   Badge,
@@ -43,6 +43,7 @@ const POSSalesPage = () => {
   const [pendingMethod, setPendingMethod] = useState<PaymentMethod | null>(null);
   const [activeConsumer, setActiveConsumer] = useState<Consumer | null>(null);
   const consumer = useConsumer();
+  const resetConsumer = consumer.reset;
 
   const {
     categories,
@@ -66,25 +67,45 @@ const POSSalesPage = () => {
     updateQuantity,
     removeItem,
     clearCart,
+    restoreItems,
     dismissError,
   } = useCart();
 
-  const handleClearCart = () => {
+  // Notice shown when checkout bounces back to consumer lookup (T4)
+  const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
+
+  const handleClearCart = useCallback(() => {
     clearCart();
     setActiveConsumer(null);
-  };
+  }, [clearCart]);
+
+  // T4: order creation rejected because consumerId is missing → drop the
+  // active consumer, show the error and re-open consumer lookup. Checkout
+  // resumes with the same payment method once a consumer is confirmed.
+  const handleConsumerRequired = useCallback(
+    (method: PaymentMethod, message: string) => {
+      setActiveConsumer(null);
+      setCheckoutNotice(message);
+      setPendingMethod(method);
+      resetConsumer();
+      setConsumerDialogOpen(true);
+    },
+    [resetConsumer],
+  );
 
   const {
     step,
     paymentMethod,
     paymentResult,
     errorMessage,
+    pendingOrder,
     openCheckout,
-    cancelCheckout,
     confirmCheckout,
     retryCheckout,
     closeCheckout,
-  } = useCheckout(cartId, handleClearCart, activeConsumer?.id ?? null);
+  } = useCheckout(cartId, handleClearCart, activeConsumer?.id ?? null, {
+    onConsumerRequired: handleConsumerRequired,
+  });
 
   const handleCheckout = (method: PaymentMethod) => {
     if (cartHasControlled && !activeConsumer) {
@@ -118,11 +139,21 @@ const POSSalesPage = () => {
   };
 
   const handleCloseDialog = () => {
-    if (step === 'SUCCESS') {
-      closeCheckout();
-    } else {
-      cancelCheckout();
+    if (step !== 'SUCCESS' && pendingOrder) {
+      // The order was created (server cart deleted) but not paid. "Keep the
+      // cart" = rebuild a fresh server cart from the order's items so the
+      // cashier can edit it and check out again. The unpaid order is left
+      // open/pending on the server (there is no cancel endpoint yet).
+      void restoreItems(pendingOrder.items);
     }
+    closeCheckout();
+  };
+
+  // T5 "ยกเลิกออเดอร์": no cancel endpoint exists on the backend, so the
+  // unpaid order stays open/pending; locally we drop the cart and consumer.
+  const handleCancelOrder = () => {
+    handleClearCart();
+    closeCheckout();
   };
 
   // ─── Left Panel (Products) ─────────────────────────────────────────────────
@@ -240,6 +271,50 @@ const POSSalesPage = () => {
     </Paper>
   );
 
+  // ─── Dialogs (shared by both layouts) ──────────────────────────────────────
+  const dialogs = (
+    <>
+      <Snackbar
+        open={!!checkoutNotice}
+        autoHideDuration={6000}
+        onClose={() => setCheckoutNotice(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert severity="warning" onClose={() => setCheckoutNotice(null)} sx={{ width: '100%' }}>
+          {checkoutNotice}
+        </Alert>
+      </Snackbar>
+
+      {/* Checkout dialog */}
+      <CheckoutDialog
+        open={step !== 'IDLE'}
+        step={step}
+        paymentMethod={paymentMethod}
+        paymentResult={paymentResult}
+        errorMessage={errorMessage}
+        subtotal={pendingOrder?.total ?? subtotal}
+        onConfirm={confirmCheckout}
+        onRetry={retryCheckout}
+        onClose={handleCloseDialog}
+        onCancelOrder={handleCancelOrder}
+      />
+
+      {/* Consumer lookup dialog (for controlled products) */}
+      <ConsumerLookupDialog
+        open={consumerDialogOpen}
+        step={consumer.step}
+        phone={consumer.phone}
+        consumer={consumer.consumer}
+        error={consumer.error}
+        onSetPhone={consumer.setPhone}
+        onLookup={consumer.lookup}
+        onRegister={consumer.register}
+        onConfirm={handleConsumerConfirmed}
+        onClose={handleCloseConsumerDialog}
+      />
+    </>
+  );
+
   // ─── Desktop Layout ────────────────────────────────────────────────────────
   if (isDesktop) {
     return (
@@ -274,32 +349,7 @@ const POSSalesPage = () => {
           </Alert>
         </Snackbar>
 
-        {/* Checkout dialog */}
-        <CheckoutDialog
-          open={step !== 'IDLE'}
-          step={step}
-          paymentMethod={paymentMethod}
-          paymentResult={paymentResult}
-          errorMessage={errorMessage}
-          subtotal={subtotal}
-          onConfirm={confirmCheckout}
-          onRetry={retryCheckout}
-          onClose={handleCloseDialog}
-        />
-
-        {/* Consumer lookup dialog (for controlled products) */}
-        <ConsumerLookupDialog
-          open={consumerDialogOpen}
-          step={consumer.step}
-          phone={consumer.phone}
-          consumer={consumer.consumer}
-          error={consumer.error}
-          onSetPhone={consumer.setPhone}
-          onLookup={consumer.lookup}
-          onRegister={consumer.register}
-          onConfirm={handleConsumerConfirmed}
-          onClose={handleCloseConsumerDialog}
-        />
+        {dialogs}
       </Layout>
     );
   }
@@ -369,32 +419,7 @@ const POSSalesPage = () => {
         </Alert>
       </Snackbar>
 
-      {/* Checkout dialog */}
-      <CheckoutDialog
-        open={step !== 'IDLE'}
-        step={step}
-        paymentMethod={paymentMethod}
-        paymentResult={paymentResult}
-        errorMessage={errorMessage}
-        subtotal={subtotal}
-        onConfirm={confirmCheckout}
-        onRetry={retryCheckout}
-        onClose={handleCloseDialog}
-      />
-
-      {/* Consumer lookup dialog (for controlled products) */}
-      <ConsumerLookupDialog
-        open={consumerDialogOpen}
-        step={consumer.step}
-        phone={consumer.phone}
-        consumer={consumer.consumer}
-        error={consumer.error}
-        onSetPhone={consumer.setPhone}
-        onLookup={consumer.lookup}
-        onRegister={consumer.register}
-        onConfirm={handleConsumerConfirmed}
-        onClose={handleCloseConsumerDialog}
-      />
+      {dialogs}
     </Layout>
   );
 };
