@@ -7,6 +7,7 @@ import PayrollPage from '@/pages/PayrollPage';
 import ProductPage from '@/pages/ProductPage';
 import POSSalesPage from '@/pages/POSSalesPage';
 import POSOrderHistoryPage from '@/pages/POSOrderHistoryPage';
+import POSConsumerPage from '@/pages/POSConsumerPage';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 
 export const Router = () => {
@@ -66,6 +67,14 @@ export const Router = () => {
           element={
             <ProtectedRoute>
               <POSOrderHistoryPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/pos/consumers"
+          element={
+            <ProtectedRoute>
+              <POSConsumerPage />
             </ProtectedRoute>
           }
         />

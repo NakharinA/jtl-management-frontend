@@ -45,7 +45,17 @@ export interface Order {
   paymentMethod?: PaymentMethod;
   paymentStatus: 'pending' | 'paid' | 'failed';
   status: 'open' | 'confirmed' | 'cancelled';
+  consumerId?: string;
   createdAt: string;
+}
+
+// ─── Consumer ─────────────────────────────────────────────────────────────────
+
+export interface Consumer {
+  id: string;
+  phone: string;
+  name: string;
+  registeredAt: string;
 }
 
 export interface CheckoutPreview {

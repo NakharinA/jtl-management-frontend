@@ -12,10 +12,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Divider,
+  FormControlLabel,
   Grid,
   IconButton,
   InputAdornment,
   Paper,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -57,6 +60,9 @@ const EMPTY_FORM = {
   barcode: '',
   productAttribute: '',
   imageUrl: '',
+  isControlled: false,
+  maxAmountPerOrder: '',
+  repurchasePeriodDays: '',
 };
 
 // ─── ProductCard ──────────────────────────────────────────────────────────────
@@ -131,6 +137,11 @@ const ProductCard = ({ product, onEdit, onDelete, onViewLogs }: ProductCardProps
           {Object.keys(product.productAttribute).length > 3 && (
             <Chip label={`+${Object.keys(product.productAttribute).length - 3}`} size="small" />
           )}
+        </Box>
+      )}
+      {product.isControlled && (
+        <Box sx={{ mt: 0.75 }}>
+          <Chip label="ควบคุม" size="small" color="error" sx={{ fontSize: '0.7rem', height: 20 }} />
         </Box>
       )}
     </CardContent>
@@ -251,6 +262,9 @@ const ProductPage = () => {
         ? JSON.stringify(product.productAttribute, null, 2)
         : '',
       imageUrl: product.imageUrl ?? '',
+      isControlled: product.isControlled ?? false,
+      maxAmountPerOrder: product.maxAmountPerOrder?.toString() ?? '',
+      repurchasePeriodDays: product.repurchasePeriodDays?.toString() ?? '',
     });
     setImageFile(null);
     setImagePreview(product.imageUrl ?? '');
@@ -306,6 +320,13 @@ const ProductPage = () => {
         barcode: formData.barcode,
         productAttribute: parsedAttributes,
         imageUrl: finalImageUrl || undefined,
+        isControlled: formData.isControlled || undefined,
+        maxAmountPerOrder: formData.isControlled && formData.maxAmountPerOrder
+          ? parseInt(formData.maxAmountPerOrder, 10)
+          : undefined,
+        repurchasePeriodDays: formData.isControlled && formData.repurchasePeriodDays
+          ? parseInt(formData.repurchasePeriodDays, 10)
+          : undefined,
       };
 
       if (editingProduct) {
@@ -618,6 +639,42 @@ const ProductPage = () => {
               minRows={3}
               placeholder='{"color": "black", "weight": "200g"}'
             />
+
+            <Divider sx={{ my: 2 }} />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={formData.isControlled}
+                  onChange={(e) => setFormData({ ...formData, isControlled: e.target.checked })}
+                  color="error"
+                />
+              }
+              label="สินค้าควบคุม"
+            />
+            {formData.isControlled && (
+              <>
+                <TextField
+                  fullWidth
+                  label="จำนวนสูงสุดต่อคำสั่งซื้อ"
+                  type="number"
+                  value={formData.maxAmountPerOrder}
+                  onChange={(e) => setFormData({ ...formData, maxAmountPerOrder: e.target.value })}
+                  margin="normal"
+                  inputProps={{ min: 1, step: 1 }}
+                  helperText="จำนวนสูงสุดที่ผู้ซื้อสามารถซื้อในคำสั่งเดียว"
+                />
+                <TextField
+                  fullWidth
+                  label="ระยะเวลาห้ามซื้อซ้ำ (วัน)"
+                  type="number"
+                  value={formData.repurchasePeriodDays}
+                  onChange={(e) => setFormData({ ...formData, repurchasePeriodDays: e.target.value })}
+                  margin="normal"
+                  inputProps={{ min: 1, step: 1 }}
+                  helperText="จำนวนวันที่ต้องรอก่อนซื้อซ้ำ"
+                />
+              </>
+            )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog} disabled={submitting}>

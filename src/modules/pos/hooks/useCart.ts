@@ -4,12 +4,28 @@ import { cartService } from '../services/cart.service';
 import { Product } from '../../product/types';
 
 const CART_ID_KEY = 'pos_cart_id';
+const CONTROLLED_IDS_KEY = 'pos_controlled_ids';
+
+function loadControlledIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(CONTROLLED_IDS_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveControlledIds(ids: Set<string>): void {
+  localStorage.setItem(CONTROLLED_IDS_KEY, JSON.stringify([...ids]));
+}
 
 export const useCart = () => {
   const [cartId, setCartId] = useState<string | null>(
     () => localStorage.getItem(CART_ID_KEY),
   );
   const [items, setItems] = useState<CartItem[]>([]);
+  const [controlledIds, setControlledIds] = useState<Set<string>>(loadControlledIds);
   const [isCartLoading, setIsCartLoading] = useState(false);
   const [cartError, setCartError] = useState<string | null>(null);
 
@@ -39,6 +55,13 @@ export const useCart = () => {
     setCartId(cart.id);
     setItems(cart.items);
     localStorage.setItem(CART_ID_KEY, cart.id);
+    // Prune controlled IDs that are no longer in the cart
+    setControlledIds((prev) => {
+      const cartProductIds = new Set(cart.items.map((i) => i.productId));
+      const next = new Set([...prev].filter((id) => cartProductIds.has(id)));
+      saveControlledIds(next);
+      return next;
+    });
   }, []);
 
   const addItem = useCallback(
@@ -54,6 +77,13 @@ export const useCart = () => {
           setCartId(activeCartId);
         }
         const updated = await cartService.addItem(activeCartId, product.id, 1);
+        if (product.isControlled) {
+          setControlledIds((prev) => {
+            const next = new Set(prev).add(product.id);
+            saveControlledIds(next);
+            return next;
+          });
+        }
         syncCart(updated);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
@@ -112,8 +142,10 @@ export const useCart = () => {
 
   const clearCart = useCallback(() => {
     localStorage.removeItem(CART_ID_KEY);
+    localStorage.removeItem(CONTROLLED_IDS_KEY);
     setCartId(null);
     setItems([]);
+    setControlledIds(new Set());
     setCartError(null);
   }, []);
 
@@ -129,6 +161,8 @@ export const useCart = () => {
     [items],
   );
 
+  const cartHasControlled = controlledIds.size > 0;
+
   return {
     cartId,
     items,
@@ -136,6 +170,7 @@ export const useCart = () => {
     cartError,
     subtotal,
     itemCount,
+    cartHasControlled,
     addItem,
     updateQuantity,
     removeItem,

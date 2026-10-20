@@ -20,6 +20,7 @@ export interface CheckoutState {
 export const useCheckout = (
   cartId: string | null,
   clearCart: () => void,
+  consumerId: string | null = null,
 ) => {
   const [state, setState] = useState<CheckoutState>({
     step: 'IDLE',
@@ -54,7 +55,7 @@ export const useCheckout = (
 
       try {
         // Step 1: Confirm order (locks prices, deletes cart on server)
-        const order = await orderService.confirmOrder(cartId);
+        const order = await orderService.confirmOrder(cartId, 0, 0, consumerId ?? undefined);
 
         // Step 2: Process payment
         const body: ProcessPaymentRequest =

@@ -3,6 +3,8 @@ import {
   Alert,
   Badge,
   Box,
+  Button,
+  Chip,
   Paper,
   Snackbar,
   Tab,
@@ -13,10 +15,14 @@ import {
 } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import GridViewIcon from '@mui/icons-material/GridView';
+import CloseIcon from '@mui/icons-material/Close';
+import PersonIcon from '@mui/icons-material/Person';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import { Layout } from '@/shared/components/Layout';
 import { usePOSProducts } from '@/modules/pos/hooks/usePOSProducts';
 import { useCart } from '@/modules/pos/hooks/useCart';
 import { useCheckout } from '@/modules/pos/hooks/useCheckout';
+import { useConsumer } from '@/modules/pos/hooks/useConsumer';
 import { POSSearchBar } from '@/modules/pos/components/POSSearchBar';
 import { CategoryFilter } from '@/modules/pos/components/CategoryFilter';
 import { ProductGrid } from '@/modules/pos/components/ProductGrid';
@@ -24,12 +30,19 @@ import { CartPanel } from '@/modules/pos/components/CartPanel';
 import { OrderSummary } from '@/modules/pos/components/OrderSummary';
 import { CheckoutButtons } from '@/modules/pos/components/CheckoutButtons';
 import { CheckoutDialog } from '@/modules/pos/components/CheckoutDialog';
-import { PaymentMethod } from '@/modules/pos/types';
+import { ConsumerLookupDialog } from '@/modules/pos/components/ConsumerLookupDialog';
+import { Consumer, PaymentMethod } from '@/modules/pos/types';
 
 const POSSalesPage = () => {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const [mobileTab, setMobileTab] = useState(0); // 0 = products, 1 = cart
+
+  // Consumer state for controlled-product checkout
+  const [consumerDialogOpen, setConsumerDialogOpen] = useState(false);
+  const [pendingMethod, setPendingMethod] = useState<PaymentMethod | null>(null);
+  const [activeConsumer, setActiveConsumer] = useState<Consumer | null>(null);
+  const consumer = useConsumer();
 
   const {
     categories,
@@ -48,12 +61,18 @@ const POSSalesPage = () => {
     cartError,
     subtotal,
     itemCount,
+    cartHasControlled,
     addItem,
     updateQuantity,
     removeItem,
     clearCart,
     dismissError,
   } = useCart();
+
+  const handleClearCart = () => {
+    clearCart();
+    setActiveConsumer(null);
+  };
 
   const {
     step,
@@ -65,10 +84,37 @@ const POSSalesPage = () => {
     confirmCheckout,
     retryCheckout,
     closeCheckout,
-  } = useCheckout(cartId, clearCart);
+  } = useCheckout(cartId, handleClearCart, activeConsumer?.id ?? null);
 
   const handleCheckout = (method: PaymentMethod) => {
-    openCheckout(method);
+    if (cartHasControlled && !activeConsumer) {
+      setPendingMethod(method);
+      consumer.reset();
+      setConsumerDialogOpen(true);
+    } else {
+      openCheckout(method);
+    }
+  };
+
+  const handleConsumerConfirmed = (confirmed: Consumer) => {
+    setActiveConsumer(confirmed);
+    setConsumerDialogOpen(false);
+    if (pendingMethod) {
+      openCheckout(pendingMethod);
+      setPendingMethod(null);
+    }
+  };
+
+  const handleCloseConsumerDialog = () => {
+    setConsumerDialogOpen(false);
+    consumer.reset();
+    setPendingMethod(null);
+  };
+
+  const handleOpenConsumerSelect = () => {
+    consumer.reset();
+    setConsumerDialogOpen(true);
+    // pendingMethod stays null — just selecting a consumer, not triggering checkout
   };
 
   const handleCloseDialog = () => {
@@ -124,14 +170,57 @@ const POSSalesPage = () => {
     >
       {/* Cart header */}
       <Box sx={{ px: 2, pt: 2, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Typography variant="h6" fontWeight={700}>
-          ตะกร้าสินค้า
-          {itemCount > 0 && (
-            <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-              ({itemCount} ชิ้น)
-            </Typography>
-          )}
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6" fontWeight={700}>
+            ตะกร้าสินค้า
+            {itemCount > 0 && (
+              <Typography component="span" variant="body2" color="text.secondary" sx={{ ml: 1 }}>
+                ({itemCount} ชิ้น)
+              </Typography>
+            )}
+          </Typography>
+        </Box>
+        {cartHasControlled && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
+            <PersonIcon sx={{ fontSize: 16, color: activeConsumer ? 'primary.main' : 'warning.main' }} />
+            {activeConsumer ? (
+              <Chip
+                label={`ผู้บริโภค: ${activeConsumer.name}`}
+                size="small"
+                color="primary"
+                variant="outlined"
+                onDelete={() => setActiveConsumer(null)}
+                deleteIcon={<CloseIcon />}
+                sx={{ fontSize: '0.75rem' }}
+              />
+            ) : (
+              <Button
+                size="small"
+                variant="outlined"
+                color="warning"
+                startIcon={<PersonAddIcon sx={{ fontSize: 14 }} />}
+                onClick={handleOpenConsumerSelect}
+                sx={{ fontSize: '0.72rem', py: 0.25, px: 1, lineHeight: 1.5 }}
+              >
+                เลือกผู้บริโภค *
+              </Button>
+            )}
+          </Box>
+        )}
+        {!cartHasControlled && activeConsumer && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.75 }}>
+            <PersonIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+            <Chip
+              label={`ผู้บริโภค: ${activeConsumer.name}`}
+              size="small"
+              color="primary"
+              variant="outlined"
+              onDelete={() => setActiveConsumer(null)}
+              deleteIcon={<CloseIcon />}
+              sx={{ fontSize: '0.75rem' }}
+            />
+          </Box>
+        )}
       </Box>
 
       {/* Items list */}
@@ -196,6 +285,20 @@ const POSSalesPage = () => {
           onConfirm={confirmCheckout}
           onRetry={retryCheckout}
           onClose={handleCloseDialog}
+        />
+
+        {/* Consumer lookup dialog (for controlled products) */}
+        <ConsumerLookupDialog
+          open={consumerDialogOpen}
+          step={consumer.step}
+          phone={consumer.phone}
+          consumer={consumer.consumer}
+          error={consumer.error}
+          onSetPhone={consumer.setPhone}
+          onLookup={consumer.lookup}
+          onRegister={consumer.register}
+          onConfirm={handleConsumerConfirmed}
+          onClose={handleCloseConsumerDialog}
         />
       </Layout>
     );
@@ -277,6 +380,20 @@ const POSSalesPage = () => {
         onConfirm={confirmCheckout}
         onRetry={retryCheckout}
         onClose={handleCloseDialog}
+      />
+
+      {/* Consumer lookup dialog (for controlled products) */}
+      <ConsumerLookupDialog
+        open={consumerDialogOpen}
+        step={consumer.step}
+        phone={consumer.phone}
+        consumer={consumer.consumer}
+        error={consumer.error}
+        onSetPhone={consumer.setPhone}
+        onLookup={consumer.lookup}
+        onRegister={consumer.register}
+        onConfirm={handleConsumerConfirmed}
+        onClose={handleCloseConsumerDialog}
       />
     </Layout>
   );

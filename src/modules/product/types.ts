@@ -10,6 +10,9 @@ export interface Product {
   retailPrice: number;
   barcode: string;
   imageUrl?: string;
+  isControlled?: boolean;
+  maxAmountPerOrder?: number;
+  repurchasePeriodDays?: number;
   createdAt: string;
   updatedAt: string;
 }

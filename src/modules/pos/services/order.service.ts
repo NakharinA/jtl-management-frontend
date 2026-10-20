@@ -32,11 +32,13 @@ export const orderService = {
     cartId: string,
     taxRate = 0,
     discount = 0,
+    consumerId?: string,
   ): Promise<Order> => {
     return apiClient.post<Order>('/pos/orders', {
       cartId,
       taxRate,
       discount,
+      ...(consumerId ? { consumerId } : {}),
     });
   },
 

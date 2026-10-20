@@ -1,6 +1,7 @@
 import { Box, Card, CardActionArea, CardContent, Chip, Typography } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import ShieldIcon from '@mui/icons-material/Shield';
 import { Product } from '../../product/types';
 
 interface Props {
@@ -102,6 +103,23 @@ export const POSProductCard = ({ product, onAddToCart, disabled }: Props) => {
               </Box>
             )}
           </Box>
+          {product.isControlled && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.75, flexWrap: 'wrap' }}>
+              <Chip
+                icon={<ShieldIcon sx={{ fontSize: '12px !important' }} />}
+                label="ควบคุม"
+                size="small"
+                color="error"
+                variant="outlined"
+                sx={{ fontSize: '0.68rem', height: 20, '& .MuiChip-label': { px: 0.75 } }}
+              />
+              {product.maxAmountPerOrder !== undefined && (
+                <Typography variant="caption" color="text.secondary">
+                  สูงสุด {product.maxAmountPerOrder} ชิ้น
+                </Typography>
+              )}
+            </Box>
+          )}
         </CardContent>
       </CardActionArea>
     </Card>
