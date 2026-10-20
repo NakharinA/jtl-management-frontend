@@ -149,6 +149,40 @@ export const useCart = () => {
     setCartError(null);
   }, []);
 
+  /**
+   * Rebuilds a fresh server cart from previously ordered items. Used when an
+   * order was created (which deletes the server cart) but could not be paid,
+   * so the cashier can edit the items and check out again.
+   */
+  const restoreItems = useCallback(
+    async (toRestore: { productId: string; quantity: number }[]) => {
+      setIsCartLoading(true);
+      setCartError(null);
+      let cart: Cart | null = null;
+      try {
+        cart = await cartService.createCart();
+        localStorage.setItem(CART_ID_KEY, cart.id);
+        for (const item of toRestore) {
+          cart = await cartService.addItem(cart.id, item.productId, item.quantity);
+        }
+        syncCart(cart);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาด';
+        setCartError(`ไม่สามารถกู้คืนตะกร้าได้ครบ: ${msg}`);
+        if (cart) {
+          syncCart(cart);
+        } else {
+          localStorage.removeItem(CART_ID_KEY);
+          setCartId(null);
+          setItems([]);
+        }
+      } finally {
+        setIsCartLoading(false);
+      }
+    },
+    [syncCart],
+  );
+
   const dismissError = useCallback(() => setCartError(null), []);
 
   const subtotal = useMemo(
@@ -175,6 +209,7 @@ export const useCart = () => {
     updateQuantity,
     removeItem,
     clearCart,
+    restoreItems,
     dismissError,
   };
 };

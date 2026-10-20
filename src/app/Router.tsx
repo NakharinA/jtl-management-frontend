@@ -8,6 +8,8 @@ import ProductPage from '@/pages/ProductPage';
 import POSSalesPage from '@/pages/POSSalesPage';
 import POSOrderHistoryPage from '@/pages/POSOrderHistoryPage';
 import MemberPage from '@/pages/MemberPage';
+import ShopProfilePage from '@/pages/ShopProfilePage';
+import PrintDocumentPage from '@/pages/PrintDocumentPage';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 
 export const Router = () => {
@@ -79,6 +81,22 @@ export const Router = () => {
           }
         />
         <Route path="/pos/consumers" element={<Navigate to="/members" replace />} />
+        <Route
+          path="/settings/shop"
+          element={
+            <ProtectedRoute>
+              <ShopProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/print/documents/:id"
+          element={
+            <ProtectedRoute>
+              <PrintDocumentPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/" element={<Navigate to="/calendar" replace />} />
         <Route path="*" element={<Navigate to="/calendar" replace />} />
       </Routes>
