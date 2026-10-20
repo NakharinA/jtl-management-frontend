@@ -46,7 +46,7 @@ const initialState = (member: Member | null): FormState => ({
   customerType: member?.customerType ?? 'person',
   shopName: member?.shopName ?? '',
   taxId: member?.taxId ?? '',
-  branch: member?.branch ?? DEFAULT_BRANCH,
+  branch: member?.branch ?? '',
   address: member?.address ?? '',
 });
 
@@ -58,9 +58,9 @@ const validate = (form: FormState): FormErrors => {
   else if (!/^0[0-9]{9}$/.test(phone)) errors.phone = 'ต้องเป็นตัวเลข 10 หลัก ขึ้นต้นด้วย 0';
   if (form.customerType === 'shop') {
     if (!form.shopName.trim()) errors.shopName = 'กรุณาระบุชื่อร้านค้า';
+    // Tax ID is optional; when given it must be 13 digits
     const taxId = digitsOnly(form.taxId);
-    if (!taxId) errors.taxId = 'กรุณาระบุเลขประจำตัวผู้เสียภาษี';
-    else if (!/^[0-9]{13}$/.test(taxId)) errors.taxId = 'ต้องเป็นตัวเลข 13 หลัก';
+    if (taxId && !/^[0-9]{13}$/.test(taxId)) errors.taxId = 'ต้องเป็นตัวเลข 13 หลัก';
   }
   return errors;
 };
@@ -99,8 +99,9 @@ export const MemberFormDialog = ({ open, member, onClose, onSubmit }: MemberForm
       phone: digitsOnly(form.phone),
       customerType: form.customerType,
       shopName: isShop ? form.shopName.trim() : null,
-      taxId: isShop ? digitsOnly(form.taxId) : null,
-      branch: isShop ? form.branch.trim() || DEFAULT_BRANCH : null,
+      taxId: isShop ? digitsOnly(form.taxId) || null : null,
+      // A branch only means something alongside a tax ID
+      branch: isShop && digitsOnly(form.taxId) ? form.branch.trim() || DEFAULT_BRANCH : null,
       address: isShop ? form.address.trim() || null : null,
     };
 
@@ -141,7 +142,7 @@ export const MemberFormDialog = ({ open, member, onClose, onSubmit }: MemberForm
             </ToggleButton>
           </ToggleButtonGroup>
           <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-            {isShop ? 'ร้านค้าจะได้รับใบกำกับภาษีเต็มรูป' : 'บุคคลทั่วไปจะได้รับใบเสร็จรับเงินอย่างย่อ'}
+            {isShop ? 'ร้านค้าจะได้รับใบส่งของ / ใบเสร็จรับเงิน' : 'บุคคลทั่วไปจะได้รับใบเสร็จรับเงินอย่างย่อ'}
           </Typography>
         </Box>
 
@@ -184,13 +185,12 @@ export const MemberFormDialog = ({ open, member, onClose, onSubmit }: MemberForm
             />
             <TextField
               fullWidth
-              label="เลขประจำตัวผู้เสียภาษี"
+              label="เลขประจำตัวผู้เสียภาษี (ถ้ามี)"
               value={form.taxId}
               onChange={(e) => update('taxId', e.target.value)}
               margin="normal"
-              required
               error={!!errors.taxId}
-              helperText={errors.taxId || 'ตัวเลข 13 หลัก'}
+              helperText={errors.taxId || 'ไม่บังคับ — ถ้ากรอกต้องเป็นตัวเลข 13 หลัก'}
               inputProps={{ maxLength: 20, inputMode: 'numeric' }}
             />
             <TextField
@@ -199,7 +199,9 @@ export const MemberFormDialog = ({ open, member, onClose, onSubmit }: MemberForm
               value={form.branch}
               onChange={(e) => update('branch', e.target.value)}
               margin="normal"
-              helperText="เช่น สำนักงานใหญ่ หรือเลขสาขา 00001"
+              disabled={!digitsOnly(form.taxId)}
+              placeholder={DEFAULT_BRANCH}
+              helperText="ใช้เมื่อมีเลขผู้เสียภาษี เช่น สำนักงานใหญ่ หรือเลขสาขา 00001"
               inputProps={{ maxLength: 100 }}
             />
             <TextField

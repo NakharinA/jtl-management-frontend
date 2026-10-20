@@ -34,7 +34,7 @@ export const useMembers = () => {
       setMembers(data.items);
       setTotal(data.total);
     } catch (err) {
-      setLoadError(toThaiMemberError(err, 'เกิดข้อผิดพลาดในการโหลดข้อมูล'));
+      setLoadError(toThaiMemberError(err, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'load'));
     } finally {
       setIsLoading(false);
     }

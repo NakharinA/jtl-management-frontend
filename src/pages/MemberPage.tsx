@@ -107,7 +107,7 @@ const MemberPage = () => {
       );
       refresh();
     } catch (err) {
-      setDeleteError(toThaiMemberError(err));
+      setDeleteError(toThaiMemberError(err, undefined, 'delete'));
     } finally {
       setDeleteBusy(false);
     }

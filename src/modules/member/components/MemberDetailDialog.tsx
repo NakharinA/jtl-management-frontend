@@ -67,7 +67,7 @@ export const MemberDetailDialog = ({ memberId, onClose, onEdit, onNotesChanged }
     try {
       setMember(await memberService.getById(memberId));
     } catch (err) {
-      setLoadError(toThaiMemberError(err, 'เกิดข้อผิดพลาดในการโหลดข้อมูล'));
+      setLoadError(toThaiMemberError(err, 'เกิดข้อผิดพลาดในการโหลดข้อมูล', 'load'));
     } finally {
       setIsLoading(false);
     }
@@ -93,7 +93,7 @@ export const MemberDetailDialog = ({ memberId, onClose, onEdit, onNotesChanged }
       onNotesChanged();
       return true;
     } catch (err) {
-      setNoteError(toThaiMemberError(err));
+      setNoteError(toThaiMemberError(err, undefined, 'note'));
       return false;
     } finally {
       setBusy(false);
