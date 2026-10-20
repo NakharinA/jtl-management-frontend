@@ -53,6 +53,13 @@ export const useOrderHistory = () => {
     }
   }, []);
 
+  /** Cancels an unpaid order and updates it in the list / detail view. */
+  const cancelOrder = useCallback(async (orderId: string) => {
+    const updated = await orderService.cancelOrder(orderId);
+    setOrders((prev) => prev.map((o) => (o.id === updated.id ? updated : o)));
+    setSelectedOrder((prev) => (prev?.id === updated.id ? updated : prev));
+  }, []);
+
   const closeDetail = useCallback(() => {
     setSelectedOrder(null);
     setSelectedPayment(null);
@@ -68,5 +75,6 @@ export const useOrderHistory = () => {
     fetchOrders,
     openDetail,
     closeDetail,
+    cancelOrder,
   };
 };

@@ -45,4 +45,9 @@ export const orderService = {
   getOrder: async (orderId: string): Promise<Order> => {
     return apiClient.get<Order>(`/pos/orders/${orderId}`);
   },
+
+  /** Cancels an unpaid order (409 when it is already paid). */
+  cancelOrder: async (orderId: string): Promise<Order> => {
+    return apiClient.post<Order>(`/pos/orders/${orderId}/cancel`, {});
+  },
 };

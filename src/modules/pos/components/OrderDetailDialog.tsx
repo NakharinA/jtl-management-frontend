@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   CircularProgress,
@@ -15,12 +17,15 @@ import {
   Typography,
 } from '@mui/material';
 import { Order, PaymentResponse } from '../types';
+import { isApiError } from '../../../services/api.client';
 
 interface Props {
   order: Order | null;
   payment: PaymentResponse | null;
   paymentLoading: boolean;
   onClose: () => void;
+  /** Cancels an unpaid open order; the button is hidden when omitted. */
+  onCancelOrder?: (orderId: string) => Promise<void>;
 }
 
 const METHOD_LABELS: Record<string, string> = {
@@ -29,8 +34,47 @@ const METHOD_LABELS: Record<string, string> = {
   card: 'บัตรเครดิต',
 };
 
-export const OrderDetailDialog = ({ order, payment, paymentLoading, onClose }: Props) => {
+export const OrderDetailDialog = ({
+  order,
+  payment,
+  paymentLoading,
+  onClose,
+  onCancelOrder,
+}: Props) => {
+  const [confirming, setConfirming] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const orderId = order?.id;
+  useEffect(() => {
+    setConfirming(false);
+    setCancelError(null);
+  }, [orderId]);
+
   if (!order) return null;
+
+  const canCancel =
+    !!onCancelOrder && order.status === 'open' && order.paymentStatus !== 'paid';
+
+  const handleCancel = async () => {
+    if (!onCancelOrder) return;
+    setCancelling(true);
+    setCancelError(null);
+    try {
+      await onCancelOrder(order.id);
+      setConfirming(false);
+    } catch (err: unknown) {
+      if (isApiError(err, 409)) {
+        setCancelError('ออเดอร์นี้ชำระเงินแล้ว ไม่สามารถยกเลิกได้');
+      } else if (isApiError(err, 404)) {
+        setCancelError('ไม่พบออเดอร์นี้');
+      } else {
+        setCancelError(err instanceof Error ? err.message : 'ยกเลิกออเดอร์ไม่สำเร็จ');
+      }
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const formattedDate = new Date(order.createdAt).toLocaleString('th-TH', {
     dateStyle: 'medium',
@@ -50,6 +94,16 @@ export const OrderDetailDialog = ({ order, payment, paymentLoading, onClose }: P
       </DialogTitle>
 
       <DialogContent dividers>
+        {order.status === 'cancelled' && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            ออเดอร์นี้ถูกยกเลิกแล้ว
+          </Alert>
+        )}
+        {cancelError && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {cancelError}
+          </Alert>
+        )}
         {/* Items */}
         <Typography variant="subtitle2" gutterBottom>
           รายการสินค้า
@@ -164,13 +218,38 @@ export const OrderDetailDialog = ({ order, payment, paymentLoading, onClose }: P
             )}
           </Box>
         ) : order.paymentStatus !== 'paid' ? (
-          <Typography variant="body2" color="text.secondary">ยังไม่ได้ชำระเงิน</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {order.status === 'cancelled' ? 'ยกเลิกแล้ว (ไม่ได้ชำระเงิน)' : 'ยังไม่ได้ชำระเงิน'}
+          </Typography>
         ) : (
           <Typography variant="body2" color="text.secondary">ไม่พบข้อมูลการชำระเงิน</Typography>
         )}
       </DialogContent>
 
       <DialogActions>
+        {canCancel && !confirming && (
+          <Button color="error" onClick={() => setConfirming(true)} sx={{ mr: 'auto' }}>
+            ยกเลิกออเดอร์
+          </Button>
+        )}
+        {canCancel && confirming && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 'auto' }}>
+            <Typography variant="body2">ยืนยันยกเลิกออเดอร์นี้?</Typography>
+            <Button
+              color="error"
+              variant="contained"
+              size="small"
+              onClick={handleCancel}
+              disabled={cancelling}
+              startIcon={cancelling ? <CircularProgress size={14} /> : undefined}
+            >
+              ยืนยัน
+            </Button>
+            <Button size="small" onClick={() => setConfirming(false)} disabled={cancelling}>
+              ไม่
+            </Button>
+          </Box>
+        )}
         <Button onClick={onClose}>ปิด</Button>
       </DialogActions>
     </Dialog>

@@ -32,6 +32,8 @@ import { CheckoutButtons } from '@/modules/pos/components/CheckoutButtons';
 import { CheckoutDialog } from '@/modules/pos/components/CheckoutDialog';
 import { ConsumerLookupDialog } from '@/modules/pos/components/ConsumerLookupDialog';
 import { Consumer, PaymentMethod } from '@/modules/pos/types';
+import { orderService } from '@/modules/pos/services/order.service';
+import { isApiError } from '@/services/api.client';
 
 const POSSalesPage = () => {
   const theme = useTheme();
@@ -143,15 +145,28 @@ const POSSalesPage = () => {
       // The order was created (server cart deleted) but not paid. "Keep the
       // cart" = rebuild a fresh server cart from the order's items so the
       // cashier can edit it and check out again. The unpaid order is left
-      // open/pending on the server (there is no cancel endpoint yet).
+      // open/pending on the server; it can be cancelled from order history.
       void restoreItems(pendingOrder.items);
     }
     closeCheckout();
   };
 
-  // T5 "ยกเลิกออเดอร์": no cancel endpoint exists on the backend, so the
-  // unpaid order stays open/pending; locally we drop the cart and consumer.
-  const handleCancelOrder = () => {
+  // T5 "ยกเลิกออเดอร์": cancel the unpaid order on the server, then drop the
+  // cart and consumer locally. If the server call fails the order stays
+  // open and can be cancelled later from the order history page.
+  const handleCancelOrder = async () => {
+    const orderId = pendingOrder?.id;
+    if (orderId) {
+      try {
+        await orderService.cancelOrder(orderId);
+      } catch (err: unknown) {
+        setCheckoutNotice(
+          isApiError(err, 409)
+            ? 'ออเดอร์นี้ชำระเงินแล้ว ไม่สามารถยกเลิกได้ — ตรวจสอบที่ประวัติการขาย'
+            : 'ยกเลิกออเดอร์บนระบบไม่สำเร็จ — ยกเลิกได้ภายหลังที่หน้าประวัติการขาย',
+        );
+      }
+    }
     handleClearCart();
     closeCheckout();
   };

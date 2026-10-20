@@ -55,16 +55,16 @@ const PAYMENT_STATUS_COLOR: Record<
 const ORDER_STATUS_LABEL: Record<string, string> = {
   open: 'เปิด',
   confirmed: 'ยืนยันแล้ว',
-  cancelled: 'ยกเลิก',
+  cancelled: 'ยกเลิกแล้ว',
 };
 
 const ORDER_STATUS_COLOR: Record<
   string,
-  'default' | 'success' | 'info' | 'warning'
+  'default' | 'success' | 'info' | 'warning' | 'error'
 > = {
   open: 'info',
   confirmed: 'success',
-  cancelled: 'default',
+  cancelled: 'error',
 };
 
 const METHOD_LABELS: Record<string, string> = {
@@ -78,7 +78,7 @@ const POSOrderHistoryPage = () => {
   const [to, setTo] = useState(today);
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
-  // Paid order whose receipt / tax invoice dialog is open
+  // Paid order whose receipt / delivery note dialog is open
   const [printOrderId, setPrintOrderId] = useState<string | null>(null);
 
   const {
@@ -91,6 +91,7 @@ const POSOrderHistoryPage = () => {
     fetchOrders,
     openDetail,
     closeDetail,
+    cancelOrder,
   } = useOrderHistory();
 
   useEffect(() => {
@@ -210,7 +211,13 @@ const POSOrderHistoryPage = () => {
                     <TableRow
                       key={order.id}
                       hover
-                      sx={{ cursor: 'pointer' }}
+                      sx={{
+                        cursor: 'pointer',
+                        ...(order.status === 'cancelled' && {
+                          '& td': { color: 'text.disabled' },
+                          '& td:nth-of-type(4)': { textDecoration: 'line-through' },
+                        }),
+                      }}
                       onClick={() => openDetail(order)}
                     >
                       <TableCell>
@@ -232,13 +239,18 @@ const POSOrderHistoryPage = () => {
                           : '-'}
                       </TableCell>
                       <TableCell align="center">
-                        <Chip
-                          label={
-                            PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus
-                          }
-                          color={PAYMENT_STATUS_COLOR[order.paymentStatus] ?? 'default'}
-                          size="small"
-                        />
+                        {order.status === 'cancelled' && order.paymentStatus !== 'paid' ? (
+                          // An unpaid cancelled order is no longer awaiting payment
+                          <Chip label="ไม่ได้ชำระ" size="small" variant="outlined" />
+                        ) : (
+                          <Chip
+                            label={
+                              PAYMENT_STATUS_LABEL[order.paymentStatus] ?? order.paymentStatus
+                            }
+                            color={PAYMENT_STATUS_COLOR[order.paymentStatus] ?? 'default'}
+                            size="small"
+                          />
+                        )}
                       </TableCell>
                       <TableCell align="center">
                         <Chip
@@ -249,7 +261,7 @@ const POSOrderHistoryPage = () => {
                       </TableCell>
                       <TableCell align="center">
                         {order.paymentStatus === 'paid' && (
-                          <Tooltip title="พิมพ์ใบเสร็จ / ใบกำกับภาษี">
+                          <Tooltip title="พิมพ์ใบเสร็จ / ใบส่งของ">
                             <IconButton
                               size="small"
                               onClick={(e) => {
@@ -276,6 +288,7 @@ const POSOrderHistoryPage = () => {
         payment={selectedPayment}
         paymentLoading={isDetailLoading}
         onClose={closeDetail}
+        onCancelOrder={cancelOrder}
       />
 
       <Dialog open={!!printOrderId} onClose={() => setPrintOrderId(null)} maxWidth="xs" fullWidth>
