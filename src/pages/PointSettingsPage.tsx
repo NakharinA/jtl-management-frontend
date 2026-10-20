@@ -710,6 +710,40 @@ const PointSettingsPage = () => {
     }
   };
 
+  /** Sets fixed points per unit on every type of the group (each type can still be changed below). */
+  const patchGroupPoints = async (g: PointGroup, value: number | null) => {
+    const rules = g.productTypeRules ?? [];
+    try {
+      const updated = await Promise.all(
+        rules.map((r) => pointSettingsService.updateProductTypeRule(r.productType, { pointsPerUnit: value })),
+      );
+      const byType = new Map(updated.map((u) => [u.productType, u]));
+      setGroups((prev) =>
+        prev.map((x) =>
+          x.id !== g.id
+            ? x
+            : {
+                ...x,
+                productTypeRules: (x.productTypeRules ?? []).map((r) => {
+                  const u = byType.get(r.productType);
+                  return u ? { ...r, pointsPerUnit: u.pointsPerUnit ?? null } : r;
+                }),
+              },
+        ),
+      );
+      setPreviewKey((k) => k + 1);
+      showSaved(
+        value === null
+          ? `ยกเลิกแต้มต่อหน่วยของกลุ่ม ${g.name} แล้ว`
+          : `ตั้งแต้มต่อหน่วยของทุกประเภทในกลุ่ม ${g.name} = ${fmtNumber(value)} แล้ว`,
+      );
+    } catch (e) {
+      showError(toThaiPointSettingsError(e));
+      await loadGroups();
+      throw e;
+    }
+  };
+
   const patchTypeRule = async (
     rule: PointTypeRule,
     input: { pointsPerUnit?: number | null; defaultProfitPerUnit?: number | null },
@@ -799,7 +833,8 @@ const PointSettingsPage = () => {
             ลำดับการคิดแต้มของแต่ละประเภทสินค้า: (1) ถ้ากำหนด <b>แต้มต่อหน่วย</b> ได้แต้มตามนั้นเลย × จำนวน
             (ไม่ขึ้นกับกำไร สัดส่วนคืนกำไร มูลค่าแต้ม หรือส่วนลด) (2) ถ้าสินค้ามี<b>ต้นทุน</b> ใช้กำไรจริง (ราคาขาย −
             ต้นทุน) (3) ถ้าไม่มีต้นทุน ใช้ <b>กำไรเริ่มต้น (฿/หน่วย)</b> ของประเภท (4) ถ้าไม่ได้กำหนด ใช้{' '}
-            <b>กำไรเริ่มต้น (%)</b> ของกลุ่ม · เว้นว่างไว้ = ไม่กำหนด
+            <b>กำไรเริ่มต้น (%)</b> ของกลุ่ม · เว้นว่างไว้ = ไม่กำหนด · ใส่ "แต้มต่อหน่วย (ทั้งกลุ่ม)" = ตั้งให้ทุกประเภทในกลุ่ม
+            พร้อมกัน (แก้รายประเภทได้ด้านล่าง; ประเภทที่เพิ่มเข้ากลุ่มทีหลังต้องตั้งเอง)
           </Alert>
           {loadError && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -820,6 +855,12 @@ const PointSettingsPage = () => {
                       ใช้เมื่อประเภทไม่ได้กำหนด ฿
                     </Typography>
                   </TableCell>
+                  <TableCell>
+                    แต้มต่อหน่วย (ทั้งกลุ่ม)
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      ไม่บังคับ · ใช้กับทุกประเภทในกลุ่ม
+                    </Typography>
+                  </TableCell>
                   <TableCell align="center">เปิดใช้</TableCell>
                   <TableCell />
                 </TableRow>
@@ -827,14 +868,14 @@ const PointSettingsPage = () => {
               <TableBody>
                 {loading && groups.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center">
+                    <TableCell colSpan={8} align="center">
                       <CircularProgress size={24} />
                     </TableCell>
                   </TableRow>
                 )}
                 {!loading && groups.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary' }}>
+                    <TableCell colSpan={8} align="center" sx={{ color: 'text.secondary' }}>
                       ยังไม่มีกลุ่ม
                     </TableCell>
                   </TableRow>
@@ -871,6 +912,22 @@ const PointSettingsPage = () => {
                         onCommit={(v) => patchGroup(g, { defaultMarginPercent: v })}
                       />
                     </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const rules = g.productTypeRules ?? [];
+                        if (rules.length === 0) return '—';
+                        const first = rules[0].pointsPerUnit;
+                        const same = rules.every((r) => r.pointsPerUnit === first);
+                        return (
+                          <OptionalAmountField
+                            value={same ? first : null}
+                            unit="แต้ม"
+                            placeholder={same ? '—' : 'หลายค่า'}
+                            onCommit={(v) => patchGroupPoints(g, v)}
+                          />
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell align="center">
                       <Switch
                         checked={g.active}
@@ -886,7 +943,7 @@ const PointSettingsPage = () => {
                   g.productTypes.length > 0 && (
                     <TableRow key={`${g.id}-types`} sx={{ opacity: g.active ? 1 : 0.6 }}>
                       <TableCell />
-                      <TableCell colSpan={6} sx={{ pt: 0 }}>
+                      <TableCell colSpan={7} sx={{ pt: 0 }}>
                         <TypeRulesTable group={g} onCommit={patchTypeRule} />
                       </TableCell>
                     </TableRow>
