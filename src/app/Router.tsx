@@ -9,6 +9,8 @@ import POSSalesPage from '@/pages/POSSalesPage';
 import POSOrderHistoryPage from '@/pages/POSOrderHistoryPage';
 import MemberPage from '@/pages/MemberPage';
 import PointsPage from '@/pages/PointsPage';
+import PrizePage from '@/pages/PrizePage';
+import RedemptionPage from '@/pages/RedemptionPage';
 import ShopProfilePage from '@/pages/ShopProfilePage';
 import PrintDocumentPage from '@/pages/PrintDocumentPage';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
@@ -82,6 +84,8 @@ export const Router = () => {
           }
         />
         <Route path="/points" element={<ProtectedRoute><PointsPage /></ProtectedRoute>} />
+        <Route path="/rewards/prizes" element={<ProtectedRoute><PrizePage /></ProtectedRoute>} />
+        <Route path="/rewards/redemptions" element={<ProtectedRoute><RedemptionPage /></ProtectedRoute>} />
         <Route path="/pos/consumers" element={<Navigate to="/members" replace />} />
         <Route
           path="/settings/shop"

@@ -36,7 +36,12 @@ import { Layout } from '@/shared/components/Layout';
 import { memberService, toThaiMemberError } from '@/modules/member/services/member.service';
 import { Member } from '@/modules/member/types';
 import { pointsService, toThaiPointsError } from '@/modules/points/services/points.service';
-import { MAX_POINT_DELTA, POINT_REASON_MAX_LENGTH, PointTransaction } from '@/modules/points/types';
+import {
+  MAX_POINT_DELTA,
+  POINT_REASON_MAX_LENGTH,
+  POINT_TRANSACTION_TYPE_LABEL,
+  PointTransaction,
+} from '@/modules/points/types';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -51,6 +56,14 @@ const DeltaCell = ({ delta }: { delta: number }) => (
     {delta > 0 ? '+' : '−'}
     {formatPoints(Math.abs(delta))}
   </Typography>
+);
+
+/** Transaction type label (ซื้อสินค้า / แลกของรางวัล / ...) followed by the reason. */
+const ReasonCell = ({ t }: { t: PointTransaction }) => (
+  <>
+    {t.type && <Chip size="small" variant="outlined" label={POINT_TRANSACTION_TYPE_LABEL[t.type] ?? t.type} sx={{ mr: 1 }} />}
+    {t.reason || (!t.type && <Dash />)}
+  </>
 );
 
 const useDebounced = <T,>(value: T, ms = SEARCH_DEBOUNCE_MS): T => {
@@ -321,7 +334,7 @@ const MemberPointsPanel = ({ member, onAdjusted }: { member: Member; onAdjusted:
                         <DeltaCell delta={t.delta} />
                       </TableCell>
                       <TableCell align="right">{formatPoints(t.balanceAfter)}</TableCell>
-                      <TableCell sx={{ maxWidth: 320 }}>{t.reason || <Dash />}</TableCell>
+                      <TableCell sx={{ maxWidth: 320 }}><ReasonCell t={t} /></TableCell>
                       <TableCell>{t.createdBy || <Dash />}</TableCell>
                     </TableRow>
                   ))
@@ -468,7 +481,7 @@ const RecentAdjustments = ({ onSelectMember }: { onSelectMember: (memberId: stri
                         <DeltaCell delta={t.delta} />
                       </TableCell>
                       <TableCell align="right">{formatPoints(t.balanceAfter)}</TableCell>
-                      <TableCell sx={{ maxWidth: 280 }}>{t.reason || <Dash />}</TableCell>
+                      <TableCell sx={{ maxWidth: 280 }}><ReasonCell t={t} /></TableCell>
                       <TableCell>{t.createdBy || <Dash />}</TableCell>
                     </TableRow>
                   ))
