@@ -7,7 +7,7 @@ import PayrollPage from '@/pages/PayrollPage';
 import ProductPage from '@/pages/ProductPage';
 import POSSalesPage from '@/pages/POSSalesPage';
 import POSOrderHistoryPage from '@/pages/POSOrderHistoryPage';
-import POSConsumerPage from '@/pages/POSConsumerPage';
+import MemberPage from '@/pages/MemberPage';
 import { useAuth } from '@/modules/auth/hooks/useAuth';
 
 export const Router = () => {
@@ -71,13 +71,14 @@ export const Router = () => {
           }
         />
         <Route
-          path="/pos/consumers"
+          path="/members"
           element={
             <ProtectedRoute>
-              <POSConsumerPage />
+              <MemberPage />
             </ProtectedRoute>
           }
         />
+        <Route path="/pos/consumers" element={<Navigate to="/members" replace />} />
         <Route path="/" element={<Navigate to="/calendar" replace />} />
         <Route path="*" element={<Navigate to="/calendar" replace />} />
       </Routes>

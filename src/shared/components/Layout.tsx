@@ -63,7 +63,7 @@ export const Layout = ({ children }: LayoutProps) => {
     { path: '/products', label: 'สินค้า', icon: <InventoryIcon /> },
     { path: '/pos', label: 'POS', icon: <PointOfSaleIcon /> },
     { path: '/pos/history', label: 'ประวัติการขาย', icon: <HistoryIcon /> },
-    { path: '/pos/consumers', label: 'ผู้บริโภค', icon: <PeopleOutlineIcon /> },
+    { path: '/members', label: 'สมาชิก', icon: <PeopleOutlineIcon /> },
   ];
 
   return (

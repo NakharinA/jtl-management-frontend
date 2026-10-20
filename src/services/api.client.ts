@@ -27,6 +27,15 @@ export const apiClient = {
     return handleResponse(response);
   },
 
+  patch: async <T>(url: string, data: any): Promise<T> => {
+    const response = await fetch(`${BASE_URL}${url}`, {
+      method: "PATCH",
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return handleResponse(response);
+  },
+
   delete: async <T>(
     url: string,
     params?: Record<string, string>,
