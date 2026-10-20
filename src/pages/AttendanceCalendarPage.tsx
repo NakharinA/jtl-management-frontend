@@ -20,6 +20,7 @@ import {
 } from "@mui/material";
 import { Layout } from "@/shared/components/Layout";
 import { useEmployees } from "@/modules/employee/hooks/useEmployees";
+import { Employee, RESIGNED_SUFFIX } from "@/modules/employee/types";
 import { useAttendance } from "@/modules/attendance/hooks/useAttendance";
 import { useAdvance } from "@/modules/advance/hooks/useAdvance";
 import { formatDate } from "@/shared/utils/date.utils";
@@ -48,7 +49,16 @@ const AttendanceCalendarPage = () => {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [advanceAmount, setAdvanceAmount] = useState("");
 
-  const { employees } = useEmployees();
+  // `employees` (active) feed the picker; `allEmployees` also has resigned ones so their history still shows.
+  const { employees, allEmployees } = useEmployees({ includeDeleted: true });
+  const employeeById = new Map(allEmployees.map((e) => [e.id, e]));
+  const UNKNOWN_COLOR = "#9e9e9e";
+  // Chip label: short name, plus "(ลาออกแล้ว)" for resigned employees or records with no employee at all.
+  const chipName = (employee: Employee | undefined) => {
+    if (!employee) return `ไม่ทราบชื่อ${RESIGNED_SUFFIX}`;
+    const short = employee.name.substring(0, 8);
+    return employee.deletedAt ? `${short}${RESIGNED_SUFFIX}` : short;
+  };
   const {
     records: attendanceRecords,
     createRecord: createAttendance,
@@ -93,29 +103,35 @@ const AttendanceCalendarPage = () => {
 
     const dateStr = formatDate(selectedDate);
 
-    if (eventType === "attendance") {
-      createAttendance({
-        employeeId: selectedEmployeeId,
-        date: dateStr,
-        type: attendanceType,
-      });
-      setAttendanceMonthAndLoad(
-        currentDate.getFullYear(),
-        currentDate.getMonth() + 1,
-      );
-    } else {
-      const amount = parseFloat(advanceAmount);
-      if (!isNaN(amount) && amount > 0) {
-        createAdvance({
+    try {
+      if (eventType === "attendance") {
+        await createAttendance({
           employeeId: selectedEmployeeId,
           date: dateStr,
-          amount,
+          type: attendanceType,
         });
-        await setAdvanceMonthAndLoad(
+        await setAttendanceMonthAndLoad(
           currentDate.getFullYear(),
           currentDate.getMonth() + 1,
         );
+      } else {
+        const amount = parseFloat(advanceAmount);
+        if (!isNaN(amount) && amount > 0) {
+          await createAdvance({
+            employeeId: selectedEmployeeId,
+            date: dateStr,
+            amount,
+          });
+          await setAdvanceMonthAndLoad(
+            currentDate.getFullYear(),
+            currentDate.getMonth() + 1,
+          );
+        }
       }
+    } catch {
+      // e.g. 400 when the employee was deleted in another tab
+      window.alert("บันทึกรายการไม่สำเร็จ กรุณาลองใหม่อีกครั้ง");
+      return;
     }
 
     setDialogOpen(false);
@@ -225,14 +241,11 @@ const AttendanceCalendarPage = () => {
                         {attendanceRecords.map((record) => {
                           if (record.date !== format(day, "yyyy-MM-dd"))
                             return null;
-                          const employee = employees.find(
-                            (e) => e.id === record.employeeId,
-                          );
-                          if (!employee) return null;
+                          const employee = employeeById.get(record.employeeId);
                           return (
                             <Chip
-                              key={`att-${record.employeeId}`}
-                              label={`${employee.name.substring(0, 8)} - ${record.type === "absent" ? "ขาด" : "ครึ่งวัน"}`}
+                              key={`att-${record.id}`}
+                              label={`${chipName(employee)} - ${record.type === "absent" ? "ขาด" : "ครึ่งวัน"}`}
                               size="small"
                               onDelete={(e) =>
                                 handleDeleteAttendance(
@@ -245,7 +258,8 @@ const AttendanceCalendarPage = () => {
                                 )
                               }
                               sx={{
-                                backgroundColor: employee.color,
+                                backgroundColor:
+                                  employee?.color || UNKNOWN_COLOR,
                                 color: "#fff",
                                 fontSize: "0.65rem",
                                 height: 20,
@@ -268,14 +282,11 @@ const AttendanceCalendarPage = () => {
                         {advanceRecords.map((record, idx) => {
                           if (record.date !== format(day, "yyyy-MM-dd"))
                             return null;
-                          const employee = employees.find(
-                            (e) => e.id === record.employeeId,
-                          );
-                          if (!employee) return null;
+                          const employee = employeeById.get(record.employeeId);
                           return (
                             <Chip
-                              key={`adv-${record.employeeId}-${idx}`}
-                              label={`${employee.name.substring(0, 8)} - ฿${record.amount}`}
+                              key={`adv-${record.id ?? idx}`}
+                              label={`${chipName(employee)} - ฿${record.amount}`}
                               size="small"
                               onDelete={(e) =>
                                 handleDeleteAdvance(
@@ -288,7 +299,8 @@ const AttendanceCalendarPage = () => {
                                 )
                               }
                               sx={{
-                                backgroundColor: employee.color,
+                                backgroundColor:
+                                  employee?.color || UNKNOWN_COLOR,
                                 color: "#fff",
                                 fontSize: "0.65rem",
                                 height: 20,

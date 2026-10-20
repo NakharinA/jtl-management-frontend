@@ -18,16 +18,26 @@ import {
   TableRow,
   Paper,
   IconButton,
+  FormControlLabel,
+  Switch,
+  Tooltip,
 } from '@mui/material';
 import { Layout } from '@/shared/components/Layout';
 import { useEmployees } from '@/modules/employee/hooks/useEmployees';
-import { Employee } from '@/modules/employee/types';
+import { Employee, employeeDisplayName } from '@/modules/employee/types';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import RestoreIcon from '@mui/icons-material/Restore';
 
 const EmployeeConfigPage = () => {
-  const { employees, createEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const [showResigned, setShowResigned] = useState(false);
+  const { employees, allEmployees, createEmployee, updateEmployee, deleteEmployee, restoreEmployee } =
+    useEmployees({ includeDeleted: showResigned });
+  // Active employees first; resigned ones (only loaded when the switch is on) after them.
+  const rows = showResigned
+    ? [...employees, ...allEmployees.filter((e) => e.deletedAt)]
+    : employees;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState({
@@ -80,9 +90,22 @@ const EmployeeConfigPage = () => {
     handleCloseDialog();
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('คุณแน่ใจหรือไม่ที่จะลบพนักงานคนนี้?')) {
-      deleteEmployee(id);
+  // Soft delete: the employee disappears from pickers and payroll; attendance/advance history is kept.
+  const handleDelete = async (id: string) => {
+    if (
+      window.confirm(
+        'คุณแน่ใจหรือไม่ที่จะลบพนักงานคนนี้? (ประวัติการลงเวลาและการเบิกเงินจะยังถูกเก็บไว้)',
+      )
+    ) {
+      const ok = await deleteEmployee(id);
+      if (!ok) window.alert('ลบพนักงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
+    }
+  };
+
+  const handleRestore = async (id: string) => {
+    if (window.confirm('ต้องการนำพนักงานคนนี้กลับมาใช้งานหรือไม่?')) {
+      const ok = await restoreEmployee(id);
+      if (!ok) window.alert('กู้คืนพนักงานไม่สำเร็จ กรุณาลองใหม่อีกครั้ง');
     }
   };
 
@@ -93,13 +116,24 @@ const EmployeeConfigPage = () => {
           <Typography variant="h4" component="h1">
             จัดการพนักงาน
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            เพิ่มพนักงาน
-          </Button>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showResigned}
+                  onChange={(e) => setShowResigned(e.target.checked)}
+                />
+              }
+              label="แสดงพนักงานที่ลาออกแล้ว"
+            />
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
+            >
+              เพิ่มพนักงาน
+            </Button>
+          </Box>
         </Box>
 
         <Card>
@@ -116,7 +150,7 @@ const EmployeeConfigPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {employees.length === 0 ? (
+                  {rows.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} align="center">
                         <Typography color="text.secondary">
@@ -125,9 +159,12 @@ const EmployeeConfigPage = () => {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    employees.map((employee) => (
-                      <TableRow key={employee.id}>
-                        <TableCell>{employee.name}</TableCell>
+                    rows.map((employee) => (
+                      <TableRow
+                        key={employee.id}
+                        sx={employee.deletedAt ? { opacity: 0.6 } : undefined}
+                      >
+                        <TableCell>{employeeDisplayName(employee)}</TableCell>
                         <TableCell align="right">{employee.dailyRate} ฿</TableCell>
                         <TableCell align="right">{employee.paydayAnchor}</TableCell>
                         <TableCell>
@@ -142,20 +179,34 @@ const EmployeeConfigPage = () => {
                           />
                         </TableCell>
                         <TableCell align="right">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenDialog(employee)}
-                            color="primary"
-                          >
-                            <EditIcon />
-                          </IconButton>
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDelete(employee.id)}
-                            color="error"
-                          >
-                            <DeleteIcon />
-                          </IconButton>
+                          {employee.deletedAt ? (
+                            <Tooltip title="กู้คืนพนักงาน">
+                              <IconButton
+                                size="small"
+                                onClick={() => handleRestore(employee.id)}
+                                color="primary"
+                              >
+                                <RestoreIcon />
+                              </IconButton>
+                            </Tooltip>
+                          ) : (
+                            <>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleOpenDialog(employee)}
+                                color="primary"
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDelete(employee.id)}
+                                color="error"
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))
