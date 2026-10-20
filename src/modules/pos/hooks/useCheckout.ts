@@ -1,5 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Order, PaymentMethod, PaymentResponse, ProcessPaymentRequest } from '../types';
+import {
+  CartItem,
+  Order,
+  PaymentMethod,
+  PaymentResponse,
+  ProcessPaymentRequest,
+} from '../types';
 import { orderService } from '../services/order.service';
 import { paymentService } from '../services/payment.service';
 import { isApiError } from '../../../services/api.client';
@@ -18,7 +24,7 @@ export interface CheckoutState {
   paymentResult: PaymentResponse | null;
   errorMessage: string | null;
   /**
-   * Order created on the server (server cart already deleted) but not yet paid.
+   * Order created on the server but not yet paid.
    * Retrying payment re-uses it instead of creating a second order.
    */
   pendingOrder: Order | null;
@@ -43,8 +49,13 @@ const isConsumerRequiredError = (err: unknown) =>
 const isRepurchaseBlockedError = (err: unknown) =>
   isApiError(err, 409) && /repurchase/i.test(err.message);
 
+/**
+ * Checkout makes two calls: POST /pos/orders (items sent inline from the local
+ * cart) and POST /pos/orders/:id/payment. No /pos/checkout preview: the cart
+ * total is computed locally.
+ */
 export const useCheckout = (
-  cartId: string | null,
+  items: CartItem[],
   clearCart: () => void,
   consumerId: string | null = null,
   options: CheckoutOptions = {},
@@ -59,16 +70,21 @@ export const useCheckout = (
   const confirmCheckout = useCallback(
     async (paymentDetails: Omit<ProcessPaymentRequest, 'method'>) => {
       const method = state.paymentMethod;
-      if (!method || (!cartId && !state.pendingOrder)) return;
+      if (!method || (items.length === 0 && !state.pendingOrder)) return;
 
       setState((prev) => ({ ...prev, step: 'PROCESSING' }));
 
-      // Step 1: Confirm order (locks prices, deletes cart on server).
+      // Step 1: Create the order from the local cart (server locks prices).
       // Skipped when a previous attempt already created the order.
       let order = state.pendingOrder;
       if (!order) {
         try {
-          order = await orderService.confirmOrder(cartId!, 0, 0, consumerId ?? undefined);
+          order = await orderService.confirmOrder(
+            items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+            0,
+            0,
+            consumerId ?? undefined,
+          );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างออเดอร์';
           if (isConsumerRequiredError(err) && onConsumerRequired) {
@@ -121,7 +137,7 @@ export const useCheckout = (
         }));
       }
     },
-    [cartId, consumerId, state.paymentMethod, state.pendingOrder, clearCart, onConsumerRequired],
+    [items, consumerId, state.paymentMethod, state.pendingOrder, clearCart, onConsumerRequired],
   );
 
   const retryCheckout = useCallback(() => {
