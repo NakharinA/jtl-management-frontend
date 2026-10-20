@@ -5,6 +5,11 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  IconButton,
   FormControl,
   InputLabel,
   MenuItem,
@@ -17,12 +22,15 @@ import {
   TableHead,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import PrintIcon from '@mui/icons-material/Print';
 import { Layout } from '@/shared/components/Layout';
 import { useOrderHistory } from '@/modules/pos/hooks/useOrderHistory';
 import { OrderDetailDialog } from '@/modules/pos/components/OrderDetailDialog';
+import { DocumentActions } from '@/modules/document/components/DocumentActions';
 
 const today = new Date().toISOString().split('T')[0];
 const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
@@ -70,6 +78,8 @@ const POSOrderHistoryPage = () => {
   const [to, setTo] = useState(today);
   const [status, setStatus] = useState('');
   const [paymentStatus, setPaymentStatus] = useState('');
+  // Paid order whose receipt / tax invoice dialog is open
+  const [printOrderId, setPrintOrderId] = useState<string | null>(null);
 
   const {
     orders,
@@ -175,19 +185,20 @@ const POSOrderHistoryPage = () => {
                   <TableCell align="center">วิธีชำระ</TableCell>
                   <TableCell align="center">สถานะชำระ</TableCell>
                   <TableCell align="center">สถานะคำสั่งซื้อ</TableCell>
+                  <TableCell align="center">เอกสาร</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                       <CircularProgress size={32} />
                     </TableCell>
                   </TableRow>
                 ) : orders.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={8}
                       align="center"
                       sx={{ py: 4, color: 'text.secondary' }}
                     >
@@ -236,6 +247,21 @@ const POSOrderHistoryPage = () => {
                           size="small"
                         />
                       </TableCell>
+                      <TableCell align="center">
+                        {order.paymentStatus === 'paid' && (
+                          <Tooltip title="พิมพ์ใบเสร็จ / ใบกำกับภาษี">
+                            <IconButton
+                              size="small"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPrintOrderId(order.id);
+                              }}
+                            >
+                              <PrintIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
@@ -251,6 +277,20 @@ const POSOrderHistoryPage = () => {
         paymentLoading={isDetailLoading}
         onClose={closeDetail}
       />
+
+      <Dialog open={!!printOrderId} onClose={() => setPrintOrderId(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>
+          เอกสารการขาย #{printOrderId?.slice(0, 8)}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 1 }}>
+            <DocumentActions orderId={printOrderId} />
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setPrintOrderId(null)}>ปิด</Button>
+        </DialogActions>
+      </Dialog>
     </Layout>
   );
 };

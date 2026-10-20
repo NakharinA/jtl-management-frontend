@@ -19,6 +19,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import BlockIcon from '@mui/icons-material/Block';
 import { PaymentMethod, PaymentResponse } from '../types';
 import { CheckoutStep } from '../hooks/useCheckout';
+import { DocumentActions } from '../../document/components/DocumentActions';
 
 interface Props {
   open: boolean;
@@ -213,6 +214,9 @@ export const CheckoutDialog = ({
                 </Box>
               )}
             </Box>
+            <Divider sx={{ width: '100%', my: 1 }} />
+            {/* Auto-issues the receipt / tax invoice and offers printing */}
+            <DocumentActions orderId={paymentResult.orderId} />
           </Box>
         )}
 
