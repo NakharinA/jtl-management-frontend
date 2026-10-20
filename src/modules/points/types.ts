@@ -37,6 +37,34 @@ export interface PointTransactionList {
   total: number;
 }
 
+/** Max quantity per product line when calculating points from products. */
+export const MAX_ITEM_QUANTITY = 10000;
+
+export interface PointItemInput {
+  productId: string;
+  quantity: number;
+}
+
+/** One line of POST /points/calculate: the product bought at retail price, no discount. */
+export interface PointCalculationLine {
+  productId: string;
+  productName: string;
+  productType: string;
+  group: { id: number; name: string; active: boolean } | null;
+  quantity: number;
+  unitPrice: number;
+  /** Points for this line alone (rounded down) */
+  points: number;
+}
+
+export interface PointCalculation {
+  items: PointCalculationLine[];
+  /** Points for all lines together (fractions summed before rounding down) */
+  total: number;
+  /** Why the member earns nothing (e.g. shop customers while shop earning is off) */
+  note?: string;
+}
+
 export interface AdjustPointsResult {
   balance: number;
   transaction: PointTransaction;
