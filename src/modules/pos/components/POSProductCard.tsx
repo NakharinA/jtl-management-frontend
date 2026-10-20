@@ -3,6 +3,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ShieldIcon from '@mui/icons-material/Shield';
 import { Product } from '../../product/types';
+import { STOCK_TRACKING_ENABLED } from '../config';
 
 interface Props {
   product: Product;
@@ -14,8 +15,11 @@ const LOW_STOCK_THRESHOLD = 5;
 
 export const POSProductCard = ({ product, onAddToCart, disabled }: Props) => {
   const isLowStock =
-    product.stock !== undefined && product.stock < LOW_STOCK_THRESHOLD;
-  const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+    STOCK_TRACKING_ENABLED &&
+    product.stock !== undefined &&
+    product.stock < LOW_STOCK_THRESHOLD;
+  const isOutOfStock =
+    STOCK_TRACKING_ENABLED && product.stock !== undefined && product.stock <= 0;
 
   return (
     <Card
