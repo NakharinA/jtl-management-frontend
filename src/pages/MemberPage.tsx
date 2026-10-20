@@ -33,6 +33,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
+import LoyaltyIcon from '@mui/icons-material/Loyalty';
+import { Link as RouterLink } from 'react-router-dom';
 import { Layout } from '@/shared/components/Layout';
 import { useMembers } from '@/modules/member/hooks/useMembers';
 import { memberService, toThaiMemberError } from '@/modules/member/services/member.service';
@@ -255,6 +257,7 @@ const MemberPage = () => {
                         </TableCell>
                         <TableCell>{formatDate(new Date(m.createdAt))}</TableCell>
                         <TableCell align="right" sx={{ whiteSpace: 'nowrap' }} onClick={(e) => e.stopPropagation()}>
+                          <IconButton size="small" title="แต้ม" component={RouterLink} to={`/points?memberId=${m.id}`}><LoyaltyIcon fontSize="small" /></IconButton>
                           <IconButton size="small" title="แก้ไข" onClick={() => openEdit(m)}>
                             <EditIcon fontSize="small" />
                           </IconButton>

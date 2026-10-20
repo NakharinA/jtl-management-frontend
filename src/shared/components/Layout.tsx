@@ -24,6 +24,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import PointOfSaleIcon from '@mui/icons-material/PointOfSale';
 import HistoryIcon from '@mui/icons-material/History';
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
+import LoyaltyIcon from '@mui/icons-material/Loyalty';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -65,6 +66,7 @@ export const Layout = ({ children }: LayoutProps) => {
     { path: '/pos', label: 'POS', icon: <PointOfSaleIcon /> },
     { path: '/pos/history', label: 'ประวัติการขาย', icon: <HistoryIcon /> },
     { path: '/members', label: 'สมาชิก', icon: <PeopleOutlineIcon /> },
+    { path: '/points', label: 'แต้มสะสม', icon: <LoyaltyIcon /> },
     { path: '/settings/shop', label: 'ข้อมูลร้าน', icon: <StorefrontIcon /> },
   ];
 
