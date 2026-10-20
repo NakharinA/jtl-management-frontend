@@ -45,9 +45,12 @@ import {
 import {
   EARN_SHARE_NORMAL_MAX,
   EARN_SHARE_NORMAL_MIN,
+  MAX_TYPE_RULE_VALUE,
+  POINT_RULE_LABEL,
   PointGroup,
   PointPreview,
   PointProductType,
+  PointTypeRule,
 } from '@/modules/points/types';
 
 const fmtNumber = (n: number, digits = 2) =>
@@ -122,6 +125,119 @@ const PercentField = ({
         ),
       }}
     />
+  );
+};
+
+/** '' -> null (not set); otherwise 0..MAX_TYPE_RULE_VALUE rounded to 2 decimals, or undefined if invalid. */
+const parseOptionalAmount = (s: string): number | null | undefined => {
+  if (s.trim() === '') return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0 || n > MAX_TYPE_RULE_VALUE) return undefined;
+  return Math.round(n * 100) / 100;
+};
+
+/** Inline optional number input (empty = not set) that commits on blur / Enter. */
+const OptionalAmountField = ({
+  value,
+  unit,
+  placeholder,
+  onCommit,
+}: {
+  value: number | null;
+  unit: string;
+  placeholder: string;
+  onCommit: (v: number | null) => Promise<void>;
+}) => {
+  const asText = (v: number | null) => (v === null ? '' : String(v));
+  const [text, setText] = useState(asText(value));
+  useEffect(() => setText(asText(value)), [value]);
+  const parsed = parseOptionalAmount(text);
+
+  const commit = async () => {
+    if (parsed === undefined) {
+      setText(asText(value));
+      return;
+    }
+    if (parsed !== value) {
+      try {
+        await onCommit(parsed);
+      } catch {
+        setText(asText(value));
+      }
+    }
+  };
+
+  return (
+    <TextField
+      size="small"
+      type="number"
+      value={text}
+      placeholder={placeholder}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+      error={parsed === undefined}
+      sx={{ width: 150 }}
+      inputProps={{ min: 0, max: MAX_TYPE_RULE_VALUE, step: 1 }}
+      InputProps={{ endAdornment: <InputAdornment position="end">{unit}</InputAdornment> }}
+    />
+  );
+};
+
+/** Per-type settings of one group: default baht profit and optional fixed points per unit. */
+const TypeRulesTable = ({
+  group,
+  onCommit,
+}: {
+  group: PointGroup;
+  onCommit: (rule: PointTypeRule, input: { pointsPerUnit?: number | null; defaultProfitPerUnit?: number | null }) => Promise<void>;
+}) => {
+  const rules = group.productTypeRules ?? group.productTypes.map((t) => ({
+    productType: t,
+    productCount: 0,
+    pointsPerUnit: null,
+    defaultProfitPerUnit: null,
+  }));
+  if (rules.length === 0) return null;
+  return (
+    <Table size="small" sx={{ '& td, & th': { borderBottom: 'none', py: 0.5 } }}>
+      <TableHead>
+        <TableRow>
+          <TableCell sx={{ color: 'text.secondary' }}>ประเภทสินค้า</TableCell>
+          <TableCell align="right" sx={{ color: 'text.secondary' }}>
+            สินค้า
+          </TableCell>
+          <TableCell sx={{ color: 'text.secondary' }}>กำไรเริ่มต้น (฿/หน่วย)</TableCell>
+          <TableCell sx={{ color: 'text.secondary' }}>แต้มต่อหน่วย (ไม่บังคับ)</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rules.map((r) => (
+          <TableRow key={r.productType}>
+            <TableCell>{r.productType}</TableCell>
+            <TableCell align="right">{r.productCount}</TableCell>
+            <TableCell>
+              <OptionalAmountField
+                value={r.defaultProfitPerUnit}
+                unit="฿"
+                placeholder={`${fmtNumber(group.defaultMarginPercent)}%`}
+                onCommit={(v) => onCommit(r, { defaultProfitPerUnit: v })}
+              />
+            </TableCell>
+            <TableCell>
+              <OptionalAmountField
+                value={r.pointsPerUnit}
+                unit="แต้ม"
+                placeholder="—"
+                onCommit={(v) => onCommit(r, { pointsPerUnit: v })}
+              />
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 
@@ -269,12 +385,12 @@ const AddGroupDialog = ({
           InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
         />
         <TextField
-          label="กำไรเริ่มต้น (สินค้าที่ไม่มีต้นทุน)"
+          label="กำไรเริ่มต้น (%)"
           type="number"
           value={margin}
           onChange={(e) => setMargin(e.target.value)}
           error={marginN === null}
-          helperText="ใช้เมื่อสินค้าไม่ได้กรอกต้นทุน"
+          helperText="ใช้เมื่อสินค้าไม่ได้กรอกต้นทุน และประเภทสินค้าไม่ได้กำหนดกำไรเริ่มต้นเป็น ฿"
           InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
         />
         <Typography variant="caption" color="text.secondary">
@@ -455,6 +571,7 @@ const PreviewTable = ({ groups, reloadKey }: { groups: PointGroup[]; reloadKey: 
               <TableCell align="right">ราคาปลีก</TableCell>
               <TableCell align="right">ต้นทุน</TableCell>
               <TableCell align="right">กำไรที่ใช้</TableCell>
+              <TableCell>วิธีคิด</TableCell>
               <TableCell align="right">แต้ม/ชิ้น</TableCell>
               <TableCell align="right">ซื้อกี่บาทได้ 1 แต้ม</TableCell>
             </TableRow>
@@ -462,14 +579,14 @@ const PreviewTable = ({ groups, reloadKey }: { groups: PointGroup[]; reloadKey: 
           <TableBody>
             {loading && (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
             )}
             {!loading && items.length === 0 && (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary' }}>
+                <TableCell colSpan={8} align="center" sx={{ color: 'text.secondary' }}>
                   ไม่มีสินค้าที่ได้แต้ม
                 </TableCell>
               </TableRow>
@@ -494,15 +611,31 @@ const PreviewTable = ({ groups, reloadKey }: { groups: PointGroup[]; reloadKey: 
                   <TableCell align="right">{fmtBaht(i.retailPrice)}</TableCell>
                   <TableCell align="right">{i.productCost > 0 ? fmtBaht(i.productCost) : '—'}</TableCell>
                   <TableCell align="right">
-                    {fmtNumber(i.marginPercent)}%
-                    {i.marginSource === 'default' && (
-                      <Typography variant="caption" color="text.secondary" display="block">
-                        ค่าเริ่มต้นกลุ่ม
+                    {i.rule === 'fixed' ? (
+                      '—'
+                    ) : i.rule === 'type_profit' && i.typeDefaultProfitPerUnit != null ? (
+                      <>
+                        {fmtBaht(i.typeDefaultProfitPerUnit)} ฿
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {fmtNumber(i.marginPercent)}%
+                        </Typography>
+                      </>
+                    ) : (
+                      `${fmtNumber(i.marginPercent)}%`
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2">
+                      {i.rule ? POINT_RULE_LABEL[i.rule] : i.marginSource === 'default' ? 'ค่าเริ่มต้นกลุ่ม' : 'ต้นทุนสินค้า'}
+                    </Typography>
+                    {i.rule === 'fixed' && i.typePointsPerUnit != null && (
+                      <Typography variant="caption" color="text.secondary">
+                        {fmtNumber(i.typePointsPerUnit)} แต้ม/หน่วย
                       </Typography>
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title={`${fmtNumber(i.pointsPerUnitExact, 4)} แต้ม (ปัดเศษลงตอนรวมทั้งบิล)`}>
+                    <Tooltip title={`${fmtNumber(i.pointsPerUnitExact, 4)} แต้ม (แต้มจริงปัดเศษลงเป็นจำนวนเต็มต่อรายการ)`}>
                       <span>{fmtNumber(i.pointsPerUnitExact)}</span>
                     </Tooltip>
                   </TableCell>
@@ -577,6 +710,34 @@ const PointSettingsPage = () => {
     }
   };
 
+  const patchTypeRule = async (
+    rule: PointTypeRule,
+    input: { pointsPerUnit?: number | null; defaultProfitPerUnit?: number | null },
+  ) => {
+    try {
+      const updated = await pointSettingsService.updateProductTypeRule(rule.productType, input);
+      setGroups((prev) =>
+        prev.map((g) => ({
+          ...g,
+          productTypeRules: (g.productTypeRules ?? []).map((r) =>
+            r.productType === rule.productType
+              ? {
+                  ...r,
+                  pointsPerUnit: updated.pointsPerUnit ?? null,
+                  defaultProfitPerUnit: updated.defaultProfitPerUnit ?? null,
+                }
+              : r,
+          ),
+        })),
+      );
+      setPreviewKey((k) => k + 1);
+      showSaved(`บันทึกประเภท ${rule.productType} แล้ว`);
+    } catch (e) {
+      showError(toThaiPointSettingsError(e));
+      throw e;
+    }
+  };
+
   const confirmDelete = async () => {
     if (!deleteGroup) return;
     setDeleting(true);
@@ -601,7 +762,8 @@ const PointSettingsPage = () => {
             ตั้งค่าแต้ม
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            แต้มจากการซื้อ = กำไรของสินค้าในกลุ่ม × สัดส่วนคืนกำไร ÷ มูลค่า 1 แต้ม (ปัดเศษลง ไม่มีวันหมดอายุ)
+            แต้มจากการซื้อ = กำไรของสินค้าในกลุ่ม × สัดส่วนคืนกำไร ÷ มูลค่า 1 แต้ม หรือแต้มคงที่ต่อหน่วยของประเภทสินค้า
+            · ปัดเศษลงเป็นจำนวนเต็มทีละรายการ ยอดรวมบิล = ผลบวกของทุกรายการ · แต้มไม่มีวันหมดอายุ
           </Typography>
         </Box>
 
@@ -631,9 +793,14 @@ const PointSettingsPage = () => {
             </Button>
           </Box>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            กำไรคิดจากต้นทุนในตารางสินค้า ถ้าสินค้าไม่มีต้นทุนจะใช้ "กำไรเริ่มต้น" ของกลุ่ม · ปกติคืนกำไร{' '}
-            {EARN_SHARE_NORMAL_MIN}–{EARN_SHARE_NORMAL_MAX}%
+            ปกติคืนกำไร {EARN_SHARE_NORMAL_MIN}–{EARN_SHARE_NORMAL_MAX}%
           </Typography>
+          <Alert severity="info" sx={{ mb: 2 }}>
+            ลำดับการคิดแต้มของแต่ละประเภทสินค้า: (1) ถ้ากำหนด <b>แต้มต่อหน่วย</b> ได้แต้มตามนั้นเลย × จำนวน
+            (ไม่ขึ้นกับกำไร สัดส่วนคืนกำไร มูลค่าแต้ม หรือส่วนลด) (2) ถ้าสินค้ามี<b>ต้นทุน</b> ใช้กำไรจริง (ราคาขาย −
+            ต้นทุน) (3) ถ้าไม่มีต้นทุน ใช้ <b>กำไรเริ่มต้น (฿/หน่วย)</b> ของประเภท (4) ถ้าไม่ได้กำหนด ใช้{' '}
+            <b>กำไรเริ่มต้น (%)</b> ของกลุ่ม · เว้นว่างไว้ = ไม่กำหนด
+          </Alert>
           {loadError && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {loadError}
@@ -647,7 +814,12 @@ const PointSettingsPage = () => {
                   <TableCell>ประเภทสินค้า</TableCell>
                   <TableCell align="right">สินค้า</TableCell>
                   <TableCell>คืนกำไรเป็นแต้ม</TableCell>
-                  <TableCell>กำไรเริ่มต้น</TableCell>
+                  <TableCell>
+                    กำไรเริ่มต้น (%)
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      ใช้เมื่อประเภทไม่ได้กำหนด ฿
+                    </Typography>
+                  </TableCell>
                   <TableCell align="center">เปิดใช้</TableCell>
                   <TableCell />
                 </TableRow>
@@ -667,8 +839,8 @@ const PointSettingsPage = () => {
                     </TableCell>
                   </TableRow>
                 )}
-                {groups.map((g) => (
-                  <TableRow key={g.id} hover sx={{ opacity: g.active ? 1 : 0.6 }}>
+                {groups.map((g) => [
+                  <TableRow key={g.id} hover sx={{ opacity: g.active ? 1 : 0.6, '& > td': { borderBottom: g.productTypes.length > 0 ? 'none' : undefined } }}>
                     <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{g.name}</TableCell>
                     <TableCell sx={{ maxWidth: 360 }}>
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
@@ -710,8 +882,16 @@ const PointSettingsPage = () => {
                         <DeleteOutlineIcon />
                       </IconButton>
                     </TableCell>
-                  </TableRow>
-                ))}
+                  </TableRow>,
+                  g.productTypes.length > 0 && (
+                    <TableRow key={`${g.id}-types`} sx={{ opacity: g.active ? 1 : 0.6 }}>
+                      <TableCell />
+                      <TableCell colSpan={6} sx={{ pt: 0 }}>
+                        <TypeRulesTable group={g} onCommit={patchTypeRule} />
+                      </TableCell>
+                    </TableRow>
+                  ),
+                ])}
               </TableBody>
             </Table>
           </TableContainer>

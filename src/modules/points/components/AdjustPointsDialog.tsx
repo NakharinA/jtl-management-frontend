@@ -182,7 +182,6 @@ export const AdjustPointsDialog = ({ open, onClose, initialMember, onDone }: Adj
       if (l.productId && isValidQuantity(l.quantity)) pointsByLine.set(l.key, calc!.result.items[i++]?.points ?? 0);
     }
   }
-  const lineSum = [...pointsByLine.values()].reduce((s, n) => s + n, 0);
 
   // ---------- Delta and validation ----------
   const balance = member?.points ?? 0;
@@ -328,7 +327,6 @@ export const AdjustPointsDialog = ({ open, onClose, initialMember, onDone }: Adj
                 onRemove={(key) => setLines((ls) => (ls.length > 1 ? ls.filter((l) => l.key !== key) : [emptyLine()]))}
                 onAdd={() => setLines((ls) => [...ls, emptyLine()])}
                 total={calcFresh ? calc!.result.total : null}
-                lineSum={lineSum}
                 note={calcFresh ? calc!.result.note : undefined}
                 calcError={calcError}
                 onUseManual={() => setAddMode('manual')}
@@ -411,7 +409,6 @@ interface ProductLinesProps {
   onRemove: (key: number) => void;
   onAdd: () => void;
   total: number | null;
-  lineSum: number;
   note?: string;
   calcError: string;
   onUseManual: () => void;
@@ -429,7 +426,6 @@ const ProductLines = ({
   onRemove,
   onAdd,
   total,
-  lineSum,
   note,
   calcError,
   onUseManual,
@@ -558,11 +554,9 @@ const ProductLines = ({
             <Typography variant="body2" color="text.secondary">
               คิดตามราคาขายปลีก ไม่มีส่วนลด (สูตรเดียวกับการซื้อที่ POS)
             </Typography>
-            {total !== null && total !== lineSum && (
-              <Typography variant="caption" color="text.secondary">
-                รวมเศษแต้มของทุกรายการก่อนปัดลง
-              </Typography>
-            )}
+            <Typography variant="caption" color="text.secondary">
+              แต้มแต่ละรายการปัดเศษลงเป็นจำนวนเต็ม ยอดรวมคือผลบวกของทุกรายการ
+            </Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             {calcLoading && <CircularProgress size={16} />}

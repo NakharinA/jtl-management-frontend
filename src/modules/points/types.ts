@@ -53,13 +53,15 @@ export interface PointCalculationLine {
   group: { id: number; name: string; active: boolean } | null;
   quantity: number;
   unitPrice: number;
+  /** Which rule priced the line; null when the product earns nothing */
+  rule?: PointRule | null;
   /** Points for this line alone (rounded down) */
   points: number;
 }
 
 export interface PointCalculation {
   items: PointCalculationLine[];
-  /** Points for all lines together (fractions summed before rounding down) */
+  /** Sum of the line points (each line already rounded down) */
   total: number;
   /** Why the member earns nothing (e.g. shop customers while shop earning is off) */
   note?: string;
@@ -90,8 +92,33 @@ export interface PointGroup {
   active: boolean;
   sortOrder: number;
   productTypes: string[];
+  /** Same types with their per-type settings */
+  productTypeRules: PointTypeRule[];
   productCount: number;
 }
+
+/** Per-type settings of a product type mapped to a group. */
+export interface PointTypeRule {
+  productType: string;
+  productCount: number;
+  /** Fixed points per unit; null = use the profit formula */
+  pointsPerUnit: number | null;
+  /** Profit in baht per unit for products without a cost; null = the group's % */
+  defaultProfitPerUnit: number | null;
+}
+
+/** Which rule prices a product's points. */
+export type PointRule = 'fixed' | 'cost' | 'type_profit' | 'group_percent';
+
+export const POINT_RULE_LABEL: Record<PointRule, string> = {
+  fixed: 'แต้มคงที่ต่อหน่วย',
+  cost: 'กำไรจากต้นทุนสินค้า',
+  type_profit: 'กำไรเริ่มต้น (฿/หน่วย)',
+  group_percent: 'กำไรเริ่มต้น (%) ของกลุ่ม',
+};
+
+/** Max value of pointsPerUnit / defaultProfitPerUnit. */
+export const MAX_TYPE_RULE_VALUE = 100000;
 
 export interface PointGroupInput {
   name?: string;
@@ -106,6 +133,8 @@ export interface PointProductType {
   productCount: number;
   groupId: number | null;
   groupName: string | null;
+  pointsPerUnit?: number | null;
+  defaultProfitPerUnit?: number | null;
 }
 
 export interface PointPreviewItem {
@@ -120,6 +149,9 @@ export interface PointPreviewItem {
   productCost: number;
   marginPercent: number;
   marginSource: 'product' | 'default';
+  rule?: PointRule;
+  typePointsPerUnit?: number | null;
+  typeDefaultProfitPerUnit?: number | null;
   pointBahtPerUnit: number;
   pointsPerUnitExact: number;
   pointsPerUnit: number;
