@@ -89,6 +89,8 @@ export interface PointGroup {
   earnSharePercent: number;
   /** Margin used for products without a cost, % */
   defaultMarginPercent: number;
+  /** Fixed points per unit for every product of the group; null = not set (a type's own value wins) */
+  pointsPerUnit?: number | null;
   active: boolean;
   sortOrder: number;
   productTypes: string[];
@@ -108,10 +110,13 @@ export interface PointTypeRule {
 }
 
 /** Which rule prices a product's points. */
-export type PointRule = 'fixed' | 'cost' | 'type_profit' | 'group_percent';
+export type PointRule = 'fixed_type' | 'fixed_group' | 'cost' | 'type_profit' | 'group_percent';
+
+export const isFixedRule = (rule: PointRule | null | undefined) => rule === 'fixed_type' || rule === 'fixed_group';
 
 export const POINT_RULE_LABEL: Record<PointRule, string> = {
-  fixed: 'แต้มคงที่ต่อหน่วย',
+  fixed_type: 'แต้มต่อหน่วยของประเภท',
+  fixed_group: 'แต้มต่อหน่วยของกลุ่ม',
   cost: 'กำไรจากต้นทุนสินค้า',
   type_profit: 'กำไรเริ่มต้น (฿/หน่วย)',
   group_percent: 'กำไรเริ่มต้น (%) ของกลุ่ม',
@@ -124,6 +129,7 @@ export interface PointGroupInput {
   name?: string;
   earnSharePercent?: number;
   defaultMarginPercent?: number;
+  pointsPerUnit?: number | null;
   active?: boolean;
   sortOrder?: number;
 }
@@ -151,6 +157,7 @@ export interface PointPreviewItem {
   marginSource: 'product' | 'default';
   rule?: PointRule;
   typePointsPerUnit?: number | null;
+  groupPointsPerUnit?: number | null;
   typeDefaultProfitPerUnit?: number | null;
   pointBahtPerUnit: number;
   pointsPerUnitExact: number;
