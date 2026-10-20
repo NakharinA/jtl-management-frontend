@@ -27,6 +27,8 @@ import PeopleOutlineIcon from '@mui/icons-material/PeopleOutline';
 import LoyaltyIcon from '@mui/icons-material/Loyalty';
 import TuneIcon from '@mui/icons-material/Tune';
 import PaidIcon from '@mui/icons-material/Paid';
+import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
+import RedeemIcon from '@mui/icons-material/Redeem';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -71,6 +73,8 @@ export const Layout = ({ children }: LayoutProps) => {
     { path: '/points', label: 'แต้มสะสม', icon: <LoyaltyIcon /> },
     { path: '/points/settings', label: 'ตั้งค่าแต้ม', icon: <TuneIcon /> },
     { path: '/points/value', label: 'มูลค่าแต้ม', icon: <PaidIcon /> },
+    { path: '/rewards/prizes', label: 'ของรางวัล', icon: <CardGiftcardIcon /> },
+    { path: '/rewards/redemptions', label: 'แลกแต้ม', icon: <RedeemIcon /> },
     { path: '/settings/shop', label: 'ข้อมูลร้าน', icon: <StorefrontIcon /> },
   ];
 
