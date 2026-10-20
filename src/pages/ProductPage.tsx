@@ -320,13 +320,14 @@ const ProductPage = () => {
         barcode: formData.barcode,
         productAttribute: parsedAttributes,
         imageUrl: finalImageUrl || undefined,
-        isControlled: formData.isControlled || undefined,
+        // Always send these so unticking "controlled" or clearing a limit is saved on update
+        isControlled: formData.isControlled,
         maxAmountPerOrder: formData.isControlled && formData.maxAmountPerOrder
           ? parseInt(formData.maxAmountPerOrder, 10)
-          : undefined,
+          : null,
         repurchasePeriodDays: formData.isControlled && formData.repurchasePeriodDays
           ? parseInt(formData.repurchasePeriodDays, 10)
-          : undefined,
+          : null,
       };
 
       if (editingProduct) {

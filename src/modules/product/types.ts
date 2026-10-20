@@ -29,5 +29,12 @@ export interface PriceLog {
   changedAt: string;
 }
 
-export type CreateProductPayload = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+export type CreateProductPayload = Omit<
+  Product,
+  'id' | 'createdAt' | 'updatedAt' | 'maxAmountPerOrder' | 'repurchasePeriodDays'
+> & {
+  // null clears the limit on update
+  maxAmountPerOrder?: number | null;
+  repurchasePeriodDays?: number | null;
+};
 export type UpdateProductPayload = Partial<CreateProductPayload>;
